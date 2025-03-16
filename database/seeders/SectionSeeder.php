@@ -17,7 +17,6 @@ class SectionSeeder extends Seeder
             ['Aerodrome-Control-Tower', 'ADC'],
             ['Approach-Radar-Control', 'APP'],
             ['Flight-Advisory', 'FA'],
-            ['Aerodrome-Approach', 'ADC-APP'],
         ];
 
         foreach ($sections as $section) {

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\PermissionEnum;
+use App\Enums\RoleEnum;
 use App\Filament\Resources\UserResource\Pages;
 use App\Filament\Resources\UserResource\RelationManagers;
 use App\Models\User;
@@ -22,6 +24,11 @@ class UserResource extends Resource
     protected static ?int $navigationSort = 1;
 
     protected static ?string $navigationGroup = 'Accounts';
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->can(PermissionEnum::USER_VIEW);
+    }
 
     public static function form(Form $form): Form
     {
@@ -81,7 +88,9 @@ class UserResource extends Resource
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('section.name')
-                    ->numeric()
+                    ->getStateUsing(function ($record) {
+                        return  $record->section->name . " (" . $record->section->prefix . ")";
+                    })
                     ->sortable(),
                 Tables\Columns\TextColumn::make('username')
                     ->searchable(),
@@ -89,6 +98,18 @@ class UserResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('lastname')
                     ->searchable(),
+                Tables\Columns\TagsColumn::make('roles.name')
+                    ->sortable()
+                    ->extraAttributes([
+                        'class' => 'capitalize'
+                    ])
+                    ->label('Role')
+                    ->color(fn($record) => match ($record->roles->first()->name) {
+                        RoleEnum::SUPERADMIN  => 'warning',
+                        RoleEnum::ADMIN => 'info',
+                        RoleEnum::USER => 'success',
+                        default => 'secondary'
+                    }),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\PermissionEnum;
 use App\Filament\Resources\DocumentResource\Pages;
 use App\Filament\Resources\DocumentResource\RelationManagers;
 use App\Models\Document;
+use App\Models\DocumentCategory;
 use App\Models\Section;
 use App\Models\User;
 use Filament\Forms;
@@ -25,6 +27,11 @@ class DocumentResource extends Resource
     protected static ?int $navigationSort = 1;
 
     protected static ?string $navigationGroup = 'Documents management';
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->can(PermissionEnum::DOCUMENT_VIEW);
+    }
 
     public static function form(Form $form): Form
     {
@@ -69,12 +76,17 @@ class DocumentResource extends Resource
                     ->downloadable()
                     ->openable()
                     ->acceptedFileTypes(['application/pdf'])
-                    ->maxSize(1024)
+                    ->maxSize(10240)
                     ->required(),
                 Forms\Components\Section::make()
                     ->description('ต้องการประกาศให้เป็นสาธารณะหรือไม่?')
                     ->schema([
-                        Forms\Components\Toggle::make('publish'),
+                        Forms\Components\Toggle::make('publish')
+                            ->onIcon('heroicon-m-eye')
+                            ->offIcon('heroicon-m-x-circle')
+                            ->onColor('success')
+                            ->offColor('danger')
+                            ->default(true),
                     ])
 
             ]);
@@ -148,16 +160,22 @@ class DocumentResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
-            ])
+                Tables\Filters\SelectFilter::make('category_id')
+                    ->multiple()
+                    ->preload()
+                    ->searchable()
+                    ->columnSpan(2)
+                    ->options(DocumentCategory::all()->pluck('name', 'id'))
+            ], Tables\Enums\FiltersLayout::AboveContent)
             ->actions([
                 Tables\Actions\Action::make('follow')
                     ->label('Follow')
                     ->url(fn(Document $record): string => route('filament.admin.resources.documents.follow', $record))
                     // ->openUrlInNewTab()
                     ->button(),
-                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\PermissionEnum;
 use App\Filament\Resources\DocumentCategoryResource\Pages;
 use App\Filament\Resources\DocumentCategoryResource\RelationManagers;
 use App\Models\DocumentCategory;
@@ -22,6 +23,11 @@ class DocumentCategoryResource extends Resource
     protected static ?int $navigationSort = 1;
 
     protected static ?string $navigationGroup = 'Categories';
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->can(PermissionEnum::CATEGORY_VIEW);
+    }
 
     public static function form(Form $form): Form
     {

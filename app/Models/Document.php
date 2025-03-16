@@ -38,4 +38,9 @@ class Document extends Model
     {
         return $this->hasMany(DocumentAcknowledge::class, 'document_id');
     }
+
+    public function checkAcknowledge($userId)
+    {
+        return $this->acknowledges->where('user_id', $userId)->isNotEmpty();
+    }
 }
