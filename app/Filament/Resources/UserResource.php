@@ -84,9 +84,6 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('rank.name')
-                    ->numeric()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('section.name')
                     ->getStateUsing(function ($record) {
                         return  $record->section->name . " (" . $record->section->prefix . ")";
@@ -94,6 +91,9 @@ class UserResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('username')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('rank.name')
+                    ->numeric()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('firstname')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('lastname')
