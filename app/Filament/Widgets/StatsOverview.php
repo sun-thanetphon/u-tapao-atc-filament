@@ -3,6 +3,8 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Document;
+use App\Models\DocumentAcknowledge;
+use App\Models\User;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -15,8 +17,8 @@ class StatsOverview extends BaseWidget
 
         return [
             Stat::make('เอกสารทั้งหมด', $documentsCount . $subfix),
-            Stat::make('รับทราบแล้ว', 99),
-            Stat::make('คิดเป็น', number_format(888, 2) . " %")
+            Stat::make('รับทราบแล้ว', DocumentAcknowledge::count()),
+            Stat::make('ผู้ใช้ทั้งหมด', User::count())
         ];
     }
 }

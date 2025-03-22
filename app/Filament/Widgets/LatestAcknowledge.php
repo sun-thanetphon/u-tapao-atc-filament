@@ -30,7 +30,7 @@ class LatestAcknowledge extends BaseWidget
                     ->label('ผู้รับทราบ'),
                 Tables\Columns\TextColumn::make('document.name')
                     ->label('ชื่อเอกสาร'),
-                Tables\Columns\TextColumn::make('created_at')
+                Tables\Columns\TextColumn::make('acknowledge_date')
                     ->label('รับทราบเมื่อ')
                     ->dateTime('d-m-Y')
                     ->sortable()
