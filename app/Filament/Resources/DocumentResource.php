@@ -76,7 +76,7 @@ class DocumentResource extends Resource
                     ->downloadable()
                     ->openable()
                     ->acceptedFileTypes(['application/pdf'])
-                    ->maxSize(10240)
+                    ->maxSize(500000)
                     ->required(),
                 Forms\Components\Section::make()
                     ->description('ต้องการประกาศให้เป็นสาธารณะหรือไม่?')
@@ -168,10 +168,25 @@ class DocumentResource extends Resource
                     ->options(DocumentCategory::all()->pluck('name', 'id'))
             ], Tables\Enums\FiltersLayout::AboveContent)
             ->actions([
+                Tables\Actions\Action::make('viewPdf')
+                    ->url(function ($record) {
+                        $filePath = $record->file_path;
+                        $pathParts = explode('/', $filePath);
+                        $folder = $pathParts[0];
+                        $path = $pathParts[1];
+                        return route('view.pdf', ['folder' => $folder, 'path' => $path]);
+                    })
+                    ->color('success')
+                    ->button()
+                    ->icon('heroicon-o-eye')
+                    ->label('View')
+                    ->openUrlInNewTab(),
                 Tables\Actions\Action::make('follow')
+                    ->hidden(function ($record) {
+                        return !$record->isNeedToAck();
+                    })
                     ->label('Follow')
                     ->url(fn(Document $record): string => route('filament.admin.resources.documents.follow', $record))
-                    // ->openUrlInNewTab()
                     ->button(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
@@ -195,9 +210,6 @@ class DocumentResource extends Resource
     {
         return [
             'index' => Pages\ListDocuments::route('/'),
-            // 'create' => Pages\CreateDocument::route('/create'),
-            // 'view' => Pages\ViewDocument::route('/{record}'),
-            // 'edit' => Pages\EditDocument::route('/{record}/edit'),
             'follow' => Pages\FollowDocument::route('/{record}/follow'),
         ];
     }

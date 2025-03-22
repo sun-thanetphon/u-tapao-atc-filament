@@ -39,8 +39,23 @@ class Document extends Model
         return $this->hasMany(DocumentAcknowledge::class, 'document_id');
     }
 
-    public function checkAcknowledge($userId)
+    public function isAcknowledged($userId): bool //เช็คว่ารับทราบหรือยัง?
     {
         return $this->acknowledges->where('user_id', $userId)->isNotEmpty();
+    }
+
+    public function canView($sectionId): bool //อยู่ในแผนกที่เห็นเอกสารได้ไหม
+    {
+        return in_array($sectionId, $this->view_sections);
+    }
+
+    public function canAcknowledge($sectionId): bool //อยู่ในแผนกที่ต้องรับทราบไหม
+    {
+        return in_array($sectionId, $this->acknowledge_sections);
+    }
+
+    public function isNeedToAck(): bool //เป็นเอกสารที่ต้องรับทราบไหม
+    {
+        return !empty($this->acknowledge_sections);
     }
 }

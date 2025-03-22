@@ -9,15 +9,15 @@ Route::get('/', function () {
     return redirect('/admin');
 });
 
-Route::get('/storage/documents/{path}', function ($path) {
+Route::get('/storage/{folder}/{path}', function ($folder, $path) {
     if (Auth::check()) {
-        $path = 'documents/' . $path;
-        if (!Storage::disk('local')->exists($path)) {
+        $filePath = $folder . '/' . $path;
+        if (!Storage::disk('local')->exists($filePath)) {
             abort(404);
         }
-        $file = Storage::disk('local')->get($path);
-        $mimeType = Storage::disk('local')->mimeType($path);
+        $file = Storage::disk('local')->get($filePath);
+        $mimeType = Storage::disk('local')->mimeType($filePath);
         return Response::make($file, 200)->header("Content-Type", $mimeType);
     }
     return redirect()->intended('admin');
-});
+})->name('view.pdf');

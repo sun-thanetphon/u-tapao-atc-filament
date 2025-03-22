@@ -18,7 +18,7 @@ class StatsFollowOverview extends BaseWidget
     {
         $countUsersInSections = User::whereIn('section_id', $this->sections)->count();
         $countAcknowledgeInThisDocId =  DocumentAcknowledge::where('document_id', $this->documentId)->count();
-        $percent = $countAcknowledgeInThisDocId / $countUsersInSections * 100;
+        $percent = $countUsersInSections > 0 ? ($countAcknowledgeInThisDocId / $countUsersInSections * 100) : 0;
         return [
             Stat::make('ผู้ที่ต้องรับทราบทั้งหมด', $countUsersInSections),
             Stat::make('รับทราบแล้ว', $countAcknowledgeInThisDocId),
