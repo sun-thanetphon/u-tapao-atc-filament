@@ -110,8 +110,11 @@ class DocumentResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\IconColumn::make('publish')
-                    ->boolean(),
+                Tables\Columns\ToggleColumn::make('publish')
+                    ->onIcon('heroicon-o-eye') // กำหนดไอคอนเมื่อเปิด (เมื่อค่าเป็น true)
+                    ->offIcon('heroicon-o-x-mark')    // กำหนดไอคอนเมื่อปิด (เมื่อค่าเป็น false)
+                    ->onColor('success')        // กำหนดสีเมื่อเปิด (สามารถใช้สีเช่น success, danger, info, etc.)
+                    ->offColor('danger'),
                 Tables\Columns\TextColumn::make('view_sections')
                     ->alignCenter()
                     ->formatStateUsing(function ($record) {

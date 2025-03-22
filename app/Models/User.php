@@ -90,7 +90,7 @@ class User extends Authenticatable implements FilamentUser, HasName
         return $this->hasRole([RoleEnum::SUPERADMIN, RoleEnum::ADMIN, RoleEnum::USER]);
     }
 
-    public function checkAcknowledge($documentId)
+    public function isAcknowledged($documentId)
     {
         return $this->acknowledges->where('document_id', $documentId)->isNotEmpty();
     }

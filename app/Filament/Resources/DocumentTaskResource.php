@@ -47,7 +47,8 @@ class DocumentTaskResource extends Resource
         return $table
             ->modifyQueryUsing(function (Builder $query) {
                 $userSectionId = auth()->user()->section_id;
-                $query->whereJsonContains('view_sections', (string)$userSectionId);
+                $query->whereJsonContains('view_sections', (string)$userSectionId)
+                    ->publish();
             })
             ->defaultSort('created_at', 'desc')
             ->columns([

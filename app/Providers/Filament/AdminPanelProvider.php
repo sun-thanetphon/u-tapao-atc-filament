@@ -37,6 +37,7 @@ class AdminPanelProvider extends PanelProvider
                 'profile' => MenuItem::make()->label('Change password')
                     ->icon('heroicon-o-key'),
             ])
+            ->databaseNotifications()
             ->favicon(secure_asset('assets/images/u-tapao-circle.png'))
             ->brandLogo(asset('assets/images/u-tapao-circle.png'))
             ->brandLogoHeight(fn() => request()->routeIs('filament.admin.auth.login') ? '10rem' : '3rem')

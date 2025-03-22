@@ -22,6 +22,7 @@ class Document extends Model
     protected $casts = [
         'view_sections' => 'array',
         'acknowledge_sections' => 'array',
+        'publish' => 'boolean'
     ];
 
     public function creator(): BelongsTo
@@ -57,5 +58,15 @@ class Document extends Model
     public function isNeedToAck(): bool //เป็นเอกสารที่ต้องรับทราบไหม
     {
         return !empty($this->acknowledge_sections);
+    }
+
+    public function scopePublish($query)
+    {
+        return $query->where('publish', true);
+    }
+
+    public function scopeNotPublish($query)
+    {
+        return $query->where('publish', false);
     }
 }

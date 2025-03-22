@@ -2,17 +2,20 @@
 
 namespace App\Filament\Resources\DocumentResource\Pages;
 
+use App\Exports\FollowExport;
 use App\Filament\Resources\DocumentResource;
 use Filament\Resources\Pages\Page;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use App\Filament\Widgets\StatsFollowOverview;
 use App\Models\User;
+use Carbon\Carbon;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
+use Maatwebsite\Excel\Facades\Excel;
 
 class FollowDocument extends Page implements HasTable
 {
@@ -58,6 +61,9 @@ class FollowDocument extends Page implements HasTable
             })
             ->headerActions([
                 Action::make('export')
+                    ->action(function () {
+                        return  Excel::download(new FollowExport($this->record), 'follow_' . $this->record->code . now()->format('dmyHi') . ' .xlsx');
+                    })
                     ->label('Export Excel')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('success')
@@ -71,24 +77,29 @@ class FollowDocument extends Page implements HasTable
                     ->label('Acknowledge')
                     ->boolean()
                     ->getStateUsing(function ($record) {
-                        return $record->checkAcknowledge($this->record->id);
+                        return $record->isAcknowledged($this->record->id);
                     }),
                 TextColumn::make('created_at')
                     ->label('รับทราบเมื่อ')
                     ->dateTime('d-m-Y')
                     ->sortable()
+                    ->getStateUsing(function ($record) {
+                        $acknowledge = $record->acknowledges()->first();
+                        if ($acknowledge) {
+                            return Carbon::parse($acknowledge->acknowledge_date)->format('d-m-Y');
+                        }
+                        return null;
+                    }),
 
             ])
             ->filters([
                 //
             ])
             ->actions([
-                // Tables\Actions\EditAction::make(),
+                //
             ])
             ->bulkActions([
-                // Tables\Actions\BulkActionGroup::make([
-                //     Tables\Actions\DeleteBulkAction::make(),
-                // ]),
+                //
             ]);
     }
 }
