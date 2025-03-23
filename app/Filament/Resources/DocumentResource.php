@@ -26,7 +26,7 @@ class DocumentResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationGroup = 'Documents managementy';
+    protected static ?string $navigationGroup = 'Documents management';
 
     public static function canAccess(): bool
     {
