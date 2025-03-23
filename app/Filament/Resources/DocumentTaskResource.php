@@ -108,21 +108,24 @@ class DocumentTaskResource extends Resource
                     })
                     ->requiresConfirmation()
                     ->modalHeading('Policy')
-                    ->modalDescription('Are you sure you\'d like to understand this post?')
-                    ->modalSubmitActionLabel('รับทราบแล้ว')
+                    ->modalDescription('คุณยืนยันที่จะอ่านและรับทราบเอกสารนี้แล้วหรือไม่? การคลิก "รับทราบ" ถือเป็นการยอมรับข้อกำหนดและเงื่อนไขทั้งหมดในเอกสารนี้')
+                    ->modalSubmitActionLabel('รับทราบ')
                     ->action(function ($record) {
                         $record->acknowledges()->create([
                             'user_id' => auth()->user()->id,
                             'acknowledge_date' => now()
                         ]);
+                        Notification::make()
+                            ->title('รับทราบเอกสารเสร็จสิ้น')
+                            ->icon('heroicon-o-document-check')
+                            ->iconColor('success')
+                            ->send();
                     })
                     ->color('success')
                     ->label('Policy'),
             ])
             ->bulkActions([
-                // Tables\Actions\BulkActionGroup::make([
-                //     Tables\Actions\DeleteBulkAction::make(),
-                // ]),
+                //
             ]);
     }
 

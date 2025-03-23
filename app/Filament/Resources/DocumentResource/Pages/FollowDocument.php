@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DocumentResource\Pages;
 
+use App\Enums\RoleEnum;
 use App\Exports\FollowExport;
 use App\Filament\Resources\DocumentResource;
 use Filament\Resources\Pages\Page;
@@ -16,6 +17,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Maatwebsite\Excel\Facades\Excel;
+use Filament\Notifications\Notification;
 
 class FollowDocument extends Page implements HasTable
 {
@@ -96,7 +98,24 @@ class FollowDocument extends Page implements HasTable
                 //
             ])
             ->actions([
-                //
+                Action::make('supervisorAck')
+                    ->requiresConfirmation()
+                    ->hidden(function ($record) {
+                        return !auth()->user()->hasRole(RoleEnum::SUPERADMIN) || $record->isAcknowledged($this->record->id);
+                    })
+                    ->action(function ($record) {
+                        $this->record->acknowledges()->create([
+                            'user_id' => $record->id,
+                            'acknowledge_date' => now()
+                        ]);
+                        Notification::make()
+                            ->title('Force acknowledge successfully')
+                            ->icon('heroicon-o-document-check')
+                            ->iconColor('success')
+                            ->send();
+                    })
+                    ->button()
+                    ->label('Force'),
             ])
             ->bulkActions([
                 //
