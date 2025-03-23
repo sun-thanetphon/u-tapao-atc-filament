@@ -12,7 +12,8 @@ class DocumentObserver
     {
         $prefix = "D" . now()->format('y') . now()->format('m');
 
-        $documents = Document::whereYear('created_at', now()->year)
+        $documents = Document::withTrashed()
+            ->whereYear('created_at', now()->year)
             ->whereMonth('created_at', now()->month)
             ->get();
 
