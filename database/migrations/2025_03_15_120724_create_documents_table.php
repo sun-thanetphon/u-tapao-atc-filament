@@ -22,6 +22,7 @@ return new class extends Migration
             $table->boolean('publish');
             $table->foreignId('creator_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
