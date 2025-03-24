@@ -59,6 +59,7 @@ class DocumentResource extends Resource
                             }),
                         Forms\Components\Select::make('category_id')
                             ->label('ประเภทเอกสาร')
+                            ->required()
                             ->searchable()
                             ->preload()
                             ->relationship('category', 'name'),
