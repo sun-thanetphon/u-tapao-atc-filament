@@ -72,7 +72,7 @@ class DocumentResource extends Resource
                     ->label('File Upload')
                     ->columnSpanFull()
                     ->directory('documents')
-                    ->disk('public')
+                    ->disk('local')
                     ->acceptedFileTypes(['application/pdf'])
                     ->maxSize(104857600)
                     ->maxFiles(1)
