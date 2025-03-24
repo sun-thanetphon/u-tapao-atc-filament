@@ -62,6 +62,7 @@ class DocumentResource extends Resource
                             ->preload()
                             ->relationship('category', 'name'),
                         Forms\Components\TextInput::make('name')
+                            ->label('ชื่อเอกสาร')
                             ->required()
                             ->maxLength(255),
 
@@ -92,12 +93,6 @@ class DocumentResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            // ->modifyQueryUsing(function (Builder $query) {
-            //     if (auth()->user()->hasRole(RoleEnum::TRAINER)) {
-            //         return  $query->whereJsonContains('trainers', ['trainer_id' => (string)auth()->user()->id]);
-            //     }
-            //     return $query;
-            // })
             ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('code')
@@ -106,6 +101,7 @@ class DocumentResource extends Resource
                     ->label('ประเภทเอกสาร')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
+                    ->label('ชื่อเอกสาร')
                     ->searchable(),
                 Tables\Columns\ToggleColumn::make('publish')
                     ->onIcon('heroicon-o-eye') // กำหนดไอคอนเมื่อเปิด (เมื่อค่าเป็น true)
