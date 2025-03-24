@@ -103,7 +103,7 @@ class DocumentResource extends Resource
                 Tables\Columns\TextColumn::make('code')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('category.name')
-                    ->numeric()
+                    ->label('ประเภทเอกสาร')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
@@ -161,7 +161,7 @@ class DocumentResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category_id')
-                    ->label('ประเภทเอกสาร')
+                    ->label('เลือกประเภทเอกสาร')
                     ->multiple()
                     ->preload()
                     ->searchable()
