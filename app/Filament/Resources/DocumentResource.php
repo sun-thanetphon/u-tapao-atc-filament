@@ -73,6 +73,7 @@ class DocumentResource extends Resource
                     ->columnSpanFull()
                     ->directory('documents')
                     ->disk('local')
+                    ->preserveFilenames()
                     ->downloadable()
                     ->openable()
                     ->acceptedFileTypes(['application/pdf'])
