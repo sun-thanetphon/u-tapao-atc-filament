@@ -73,7 +73,7 @@ class UserResource extends Resource
                             ->relationship(
                                 'roles',
                                 'name',
-                                modifyQueryUsing: fn(Builder $query) => $query->orderBy('id')
+                                modifyQueryUsing: fn(Builder $query) => $query->where('name', '<>', RoleEnum::SUPERADMIN)->orderBy('id')
                             )
                             ->reactive(),
                     ])
