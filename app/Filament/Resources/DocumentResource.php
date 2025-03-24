@@ -76,7 +76,7 @@ class DocumentResource extends Resource
                     ->downloadable()
                     ->openable()
                     ->acceptedFileTypes(['application/pdf'])
-                    ->maxSize(500000)
+                    ->maxSize(104857600)
                     ->required(),
                 Forms\Components\Section::make()
                     ->description('ต้องการประกาศให้เป็นสาธารณะหรือไม่?')
