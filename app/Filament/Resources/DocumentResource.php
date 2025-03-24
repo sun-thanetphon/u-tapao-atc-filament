@@ -48,12 +48,10 @@ class DocumentResource extends Resource
                                 });
                             })
                             ->multiple()
-                            ->live()
-                            ->preload(),
+                            ->live(),
                         Forms\Components\Select::make('acknowledge_sections')
                             ->label('แผนกที่ต้องรับทราบเอกสาร')
                             ->multiple()
-                            ->preload()
                             ->options(function (Forms\Get $get): Collection {
                                 return Section::whereIn('id', $get('view_sections'))->get()->mapWithKeys(function ($section) {
                                     return [$section->id => "{$section->name} ({$section->prefix})"];
@@ -163,6 +161,7 @@ class DocumentResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category_id')
+                    ->label('ประเภทเอกสาร')
                     ->multiple()
                     ->preload()
                     ->searchable()
