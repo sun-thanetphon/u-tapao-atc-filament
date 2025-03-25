@@ -20,6 +20,10 @@ class PublicUrlResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-link';
 
+    protected static ?int $navigationSort = 1;
+
+    protected static ?string $navigationGroup = 'URL & Public';
+
     public static function canAccess(): bool
     {
         return auth()->user()->can(PermissionEnum::DOCUMENT_VIEW);
