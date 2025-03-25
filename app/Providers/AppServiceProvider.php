@@ -3,11 +3,13 @@
 namespace App\Providers;
 
 use App\Enums\RoleEnum;
+use App\Http\Responses\CustomLoginResponse;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\URL;
+use Filament\Http\Responses\Auth\Contracts\LoginResponse;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -16,7 +18,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(
+            LoginResponse::class,
+            CustomLoginResponse::class
+        );
     }
 
     /**
