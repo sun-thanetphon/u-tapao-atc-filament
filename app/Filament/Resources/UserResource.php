@@ -127,9 +127,22 @@ class UserResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\ViewAction::make()
+                    ->hidden(function ($record) {
+                        if (!auth()->user()->hasRole(RoleEnum::SUPERADMIN)) {
+                            return $record->id == 1 ? true : false;
+                        }
+                    }),
+                Tables\Actions\EditAction::make()
+                    ->hidden(function ($record) {
+                        if (!auth()->user()->hasRole(RoleEnum::SUPERADMIN)) {
+                            return $record->id == 1 ? true : false;
+                        }
+                    }),
+                Tables\Actions\DeleteAction::make()
+                    ->hidden(function ($record) {
+                        return $record->id == auth()->user()->id || $record->id == 1;
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
