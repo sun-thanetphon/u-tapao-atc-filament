@@ -24,7 +24,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $user =  User::create([
-            'rank_id' => 6,
+            'rank_id' => 11,
             'section_id' => 1,
             'firstname' => env('FIRSTNAME_INIT'),
             'lastname' => env('LASTNAME_INIT'),
