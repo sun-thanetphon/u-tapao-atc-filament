@@ -65,7 +65,7 @@ class UserResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('roles')
                             ->preload()
-                            ->required()
+                            ->required(fn(string $context): bool => $context === 'create')
                             ->native(false)
                             ->extraAttributes([
                                 'class' => 'capitalize'
