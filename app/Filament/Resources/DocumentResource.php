@@ -48,6 +48,9 @@ class DocumentResource extends Resource
                                     return [$section->id => "{$section->name} ({$section->prefix})"];
                                 });
                             })
+                            ->afterStateUpdated(function (Forms\Set $set) {
+                                $set('acknowledge_sections', []);
+                            })
                             ->multiple()
                             ->live(),
                         Forms\Components\Select::make('acknowledge_sections')
