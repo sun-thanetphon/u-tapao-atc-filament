@@ -17,6 +17,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Collection;
+use Filament\Tables\Enums\ActionsPosition;
 
 class DocumentResource extends Resource
 {
@@ -167,30 +168,34 @@ class DocumentResource extends Resource
                     ->options(DocumentCategory::all()->pluck('name', 'id'))
             ], Tables\Enums\FiltersLayout::AboveContent)
             ->actions([
-                Tables\Actions\Action::make('viewPdf')
-                    ->url(function ($record) {
-                        $filePath = $record->file_path;
-                        $pathParts = explode('/', $filePath);
-                        $folder = $pathParts[0];
-                        $path = $pathParts[1];
-                        return route('view.pdf', ['folder' => $folder, 'path' => $path]);
-                    })
-                    ->color('success')
-                    ->button()
-                    ->icon('heroicon-o-eye')
-                    ->label('View')
-                    ->openUrlInNewTab(),
-                Tables\Actions\Action::make('follow')
-                    ->hidden(function ($record) {
-                        return !$record->isNeedToAck();
-                    })
-                    ->label('Follow')
-                    ->url(fn(Document $record): string => route('filament.admin.resources.documents.follow', $record))
-                    ->button(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
 
-            ])
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('viewPdf')
+                        ->url(function ($record) {
+                            $filePath = $record->file_path;
+                            $pathParts = explode('/', $filePath);
+                            $folder = $pathParts[0];
+                            $path = $pathParts[1];
+                            return route('view.pdf', ['folder' => $folder, 'path' => $path]);
+                        })
+                        ->color('success')
+                        ->icon('heroicon-o-eye')
+                        ->label('View')
+                        ->openUrlInNewTab(),
+                    Tables\Actions\Action::make('follow')
+                        ->icon('heroicon-o-arrow-trending-up')
+
+                        ->hidden(function ($record) {
+                            return !$record->isNeedToAck();
+                        })
+                        ->label('Follow')
+                        ->url(fn(Document $record): string => route('filament.admin.resources.documents.follow', $record)),
+                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\DeleteAction::make(),
+                ])
+                    ->button()
+
+            ], position: ActionsPosition::BeforeColumns)
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
