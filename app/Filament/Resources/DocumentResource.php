@@ -184,7 +184,6 @@ class DocumentResource extends Resource
                         ->openUrlInNewTab(),
                     Tables\Actions\Action::make('follow')
                         ->icon('heroicon-o-arrow-trending-up')
-
                         ->hidden(function ($record) {
                             return !$record->isNeedToAck();
                         })

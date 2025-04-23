@@ -16,6 +16,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Notifications\Notification;
+use Filament\Tables\Enums\ActionsPosition;
 
 class DocumentTaskResource extends Resource
 {
@@ -123,7 +124,7 @@ class DocumentTaskResource extends Resource
                     })
                     ->color('success')
                     ->label('Policy'),
-            ])
+            ], position: ActionsPosition::BeforeColumns)
             ->bulkActions([
                 //
             ]);
