@@ -78,6 +78,7 @@ class DocumentTaskResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category_id')
+                    ->label("เลือกประเภทเอกสาร")
                     ->multiple()
                     ->preload()
                     ->searchable()
