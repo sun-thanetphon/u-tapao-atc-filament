@@ -35,12 +35,25 @@ class PublicUrlResource extends Resource
             ->schema([
                 Forms\Components\Section::make()
                     ->schema([
+                        Forms\Components\Select::make('category')
+                            ->label('ประเภท')
+                            ->required()
+                            ->options(
+                                collect(\App\Enums\PublicUrlCategoryEnum::cases())
+                                    ->mapWithKeys(fn($case) => [$case->value => $case->label()])
+                                    ->toArray()
+                            ),
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->maxLength(255),
                         Forms\Components\TextInput::make('url')
                             ->required()
                             ->url(),
+                        Forms\Components\TextInput::make('seq')
+                            ->label('ลำดับ')
+                            ->numeric()
+                            ->minValue(1)
+                            ->default(1),
                         Forms\Components\Toggle::make('publish')
                             ->required()
                             ->default(true)
@@ -59,6 +72,11 @@ class PublicUrlResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('category')
+                    ->badge()
+                    ->formatStateUsing(fn($state) => $state?->label()),
+                Tables\Columns\TextColumn::make('seq')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
                 Tables\Columns\IconColumn::make('publish')
@@ -72,6 +90,10 @@ class PublicUrlResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort(
+                fn($query) =>
+                $query->orderByRaw('seq IS NULL, seq ASC')
+            )
             ->filters([
                 //
             ])

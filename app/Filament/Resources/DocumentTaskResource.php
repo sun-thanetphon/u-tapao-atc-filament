@@ -101,7 +101,7 @@ class DocumentTaskResource extends Resource
                     ->button()
                     ->color('success')
                     ->icon('heroicon-o-eye')
-                    ->label('View')
+                    ->label('อ่าน')
                     ->openUrlInNewTab(),
                 Tables\Actions\Action::make('acknowledge')
                     ->button()
@@ -124,7 +124,7 @@ class DocumentTaskResource extends Resource
                             ->send();
                     })
                     ->color('success')
-                    ->label('Policy'),
+                    ->label('รับทราบเอกสาร'),
             ], position: ActionsPosition::BeforeColumns)
             ->bulkActions([
                 //

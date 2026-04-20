@@ -183,14 +183,14 @@ class DocumentResource extends Resource
                         })
                         ->color('success')
                         ->icon('heroicon-o-eye')
-                        ->label('View')
+                        ->label('อ่าน')
                         ->openUrlInNewTab(),
                     Tables\Actions\Action::make('follow')
                         ->icon('heroicon-o-arrow-trending-up')
                         ->hidden(function ($record) {
                             return !$record->isNeedToAck();
                         })
-                        ->label('Follow')
+                        ->label('ติดตามการรับทราบ')
                         ->url(fn(Document $record): string => route('filament.admin.resources.documents.follow', $record)),
                     Tables\Actions\EditAction::make(),
                     Tables\Actions\DeleteAction::make(),
