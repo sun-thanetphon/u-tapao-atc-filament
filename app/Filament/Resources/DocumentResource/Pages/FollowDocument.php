@@ -8,6 +8,7 @@ use App\Filament\Resources\DocumentResource;
 use Filament\Resources\Pages\Page;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use App\Filament\Widgets\StatsFollowOverview;
+use App\Models\DocumentAcknowledge;
 use App\Models\User;
 use Carbon\Carbon;
 use Filament\Tables\Actions\Action;
@@ -86,11 +87,10 @@ class FollowDocument extends Page implements HasTable
                     ->dateTime('d-m-Y')
                     ->sortable()
                     ->getStateUsing(function ($record) {
-                        $acknowledge = $record->acknowledges()->first();
-                        if ($acknowledge) {
-                            return Carbon::parse($acknowledge->acknowledge_date)->format('d-m-Y');
-                        }
-                        return null;
+                        $ackRecord = DocumentAcknowledge::where('user_id', $record->id)
+                            ->where('document_id', $this->getRecord()->id)
+                            ->first();
+                        return $ackRecord ? Carbon::parse($ackRecord->acknowledge_date)->format('d-m-Y') : null;
                     }),
 
             ])
