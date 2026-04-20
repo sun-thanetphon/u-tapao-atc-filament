@@ -32,14 +32,14 @@ class NewsPublicUrlTable extends BaseWidget
             )
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-            ])
-            ->actions([
-                Tables\Actions\Action::make('link')
-                    ->url(function ($record) {
-                        return $record->url;
-                    })
+                    ->url(fn($record) => $record->url)
                     ->openUrlInNewTab()
-                    ->label('Go to link'),
+                    ->color('primary')
+                    ->searchable(),
+            ])
+            ->paginationPageOptions([5])
+            ->actions([
+                //
             ]);
     }
 }
