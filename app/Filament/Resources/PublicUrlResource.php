@@ -94,6 +94,7 @@ class PublicUrlResource extends Resource
             ->defaultSort(
                 fn($query) =>
                 $query->orderBy('seq', 'asc')
+                    ->orderByDesc('created_at')
             )
             ->filters([
                 //
