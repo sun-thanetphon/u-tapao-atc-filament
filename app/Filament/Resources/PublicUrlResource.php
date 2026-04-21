@@ -74,10 +74,8 @@ class PublicUrlResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('category')
                     ->badge()
-                    ->sortable()
                     ->formatStateUsing(fn($state) => $state?->label()),
-                Tables\Columns\TextColumn::make('seq')
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('seq'),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
                 Tables\Columns\IconColumn::make('publish')
@@ -93,7 +91,9 @@ class PublicUrlResource extends Resource
             ])
             ->defaultSort(
                 fn($query) =>
-                $query->orderBy('seq', 'asc')
+                $query
+                    ->orderBy('category', 'asc')
+                    ->orderBy('seq', 'asc')
                     ->orderByDesc('created_at')
             )
             ->filters([
