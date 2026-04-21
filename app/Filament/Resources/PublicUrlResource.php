@@ -74,6 +74,7 @@ class PublicUrlResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('category')
                     ->badge()
+                    ->sortable()
                     ->formatStateUsing(fn($state) => $state?->label()),
                 Tables\Columns\TextColumn::make('seq')
                     ->sortable(),
@@ -92,7 +93,7 @@ class PublicUrlResource extends Resource
             ])
             ->defaultSort(
                 fn($query) =>
-                $query->orderByRaw('seq IS NULL, seq ASC')
+                $query->orderBy('seq', 'asc')
             )
             ->filters([
                 //

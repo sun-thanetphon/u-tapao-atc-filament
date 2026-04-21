@@ -30,6 +30,7 @@ class PublicUrl extends Model
 
     public function scopeOrdered($query)
     {
-        return $query->orderByRaw('seq IS NULL, seq ASC');
+        return $query->orderBy('seq', 'asc')
+            ->orderByDesc('created_at');
     }
 }
