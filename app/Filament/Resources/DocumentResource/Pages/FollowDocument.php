@@ -43,7 +43,7 @@ class FollowDocument extends Page implements HasTable
 
     public function getHeading(): string
     {
-        return __('ชื่อเอกสาร : ').$this->record->name;;
+        return $this->record->name;;
     }
 
     protected function getDescription(): ?string
