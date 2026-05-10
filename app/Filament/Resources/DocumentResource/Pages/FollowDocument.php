@@ -31,19 +31,19 @@ class FollowDocument extends Page implements HasTable
 
     protected ?string $subheading = 'รายการติดตามการรับทราบเอกสาร';
 
-    protected function getHeaderWidgets(): array
-    {
-        return [
-            StatsFollowOverview::make([
-                'documentId' => $this->record->id,
-                'sections' => $this->record->acknowledge_sections
-            ]),
-        ];
-    }
+    // protected function getHeaderWidgets(): array
+    // {
+    //     return [
+    //         StatsFollowOverview::make([
+    //             'documentId' => $this->record->id,
+    //             'sections' => $this->record->acknowledge_sections
+    //         ]),
+    //     ];
+    // }
 
     public function getHeading(): string
     {
-        return __('Follow');
+        return __('ชื่อเอกสาร : ').$this->record->name;;
     }
 
     protected function getDescription(): ?string

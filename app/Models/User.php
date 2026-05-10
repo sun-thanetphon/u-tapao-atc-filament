@@ -99,6 +99,6 @@ class User extends Authenticatable implements FilamentUser, HasName
     public function acknowledgeDateForDocument($documentId)
     {
         $ack = $this->acknowledges->where('document_id', $documentId)->first();
-        return $ack ? Carbon::parse($ack->acknowledge_date)->format('d-m-Y') : null;
+        return $ack ? Carbon::parse($ack->acknowledge_date)->format('d-m-Y H:i:s') : null;
     }
 }
