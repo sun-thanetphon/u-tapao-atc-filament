@@ -21,7 +21,9 @@
                 <td>
                     {{ $user->isAcknowledged($document->id) ? 'รับทราบแล้ว' : 'ยังไม่รับทราบ' }}
                 </td>
-                <td>{{ $user->acknowledges()->first()?->acknowledge_date ?? '-' }}</td>
+                <td>
+                    {{ $user->acknowledgeDateForDocument($document->id) ?? '-' }}
+                </td>
             </tr>
         @endforeach
     </tbody>

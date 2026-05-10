@@ -17,7 +17,11 @@ class FollowExport implements FromView
 
     public function view(): View
     {
-        $users = User::whereIn('section_id', $this->document->acknowledge_sections)->get();
+        $users = User::whereIn('section_id', $this->document->acknowledge_sections)
+        ->with(['acknowledges' => function($query) {
+            $query->where('document_id', $this->document->id);
+        }])
+        ->get();
 
         return view('exports.follow', [
             'document' => $this->document,

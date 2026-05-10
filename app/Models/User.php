@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 use App\Enums\RoleEnum;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -93,5 +94,11 @@ class User extends Authenticatable implements FilamentUser, HasName
     public function isAcknowledged($documentId)
     {
         return $this->acknowledges->where('document_id', $documentId)->isNotEmpty();
+    }
+
+    public function acknowledgeDateForDocument($documentId)
+    {
+        $ack = $this->acknowledges->where('document_id', $documentId)->first();
+        return $ack ? Carbon::parse($ack->acknowledge_date)->format('d-m-Y') : null;
     }
 }
