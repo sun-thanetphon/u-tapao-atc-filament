@@ -36,7 +36,7 @@ class AdminPanelProvider extends PanelProvider
                 FilamentBackgroundsPlugin::make()
                 ->imageProvider(
                     PublicHtmlImages::make()
-                        ->directory('images\backgrounds')
+                        ->directory('images/backgrounds')
                 ),
         ])
             ->colors([
