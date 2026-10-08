@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Custom\PublicHtmlImages;
 use App\Providers\Filament\Auth\CustomLogin;
 use App\Providers\Filament\Profile\ProfileEditCustom;
 use Filament\Http\Middleware\Authenticate;
@@ -34,7 +35,7 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 FilamentBackgroundsPlugin::make()
                 ->imageProvider(
-                    MyImages::make()
+                    PublicHtmlImages::make()
                         ->directory('images\backgrounds')
                 ),
         ])
