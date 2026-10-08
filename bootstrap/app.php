@@ -15,4 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
-    })->create();
+    })
+    // เพิ่มส่วนนี้ลงไปเพื่อสลับ public_path
+    ->booted(function ($app) {
+        // เช็กแบบไม่สนใจตัวพิมพ์เล็กหรือใหญ่
+        if (strtolower($app->environment()) !== 'local') {
+            $app->usePublicPath($app->basePath('public_html'));
+        }
+    })
+    ->create();

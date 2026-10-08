@@ -9,29 +9,34 @@ use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 
 class PublicHtmlImages extends MyImages
 {
-    /**
-     * ฟังก์ชันช่วยหา Path ใน public_html (เทียบเท่า public_path())
-     */
-    protected function publicHtmlPath(string $path = ''): string
+    public function directory(string $directory): static
     {
-        return base_path('public_html' . ($path ? DIRECTORY_SEPARATOR . ltrim($path, '/\\') : ''));
+        // ปรับ backslash ให้เป็น slash ปกติ
+        $this->directory = trim(str_replace('\\', '/', $directory), '/');
+
+        return $this;
     }
 
-    /**
-     * Override getImage ให้วิ่งไปที่ public_html แทน public_path()
-     */
     public function getImage(): Image
     {
         if (! isset($this->directory)) {
             throw new \RuntimeException('No image directory set, please provide a directory using the directory() method.');
         }
 
-        // ชี้ไปที่ base_path('public_html/...') แทน public_path(...)
-        $images = app(Filesystem::class)->files($this->publicHtmlPath($this->directory));
+        // ใช้ public_path() ปกติ ซึ่งจะสลับ public / public_html ให้อัตโนมัติจาก AppServiceProvider
+        $fullPath = public_path($this->directory);
 
-        $image = Str::of($images[array_rand($images)]->getPathname())
-            ->replaceStart($this->publicHtmlPath(), '')
-            ->replace(DIRECTORY_SEPARATOR, '/')
+        $images = app(Filesystem::class)->files($fullPath);
+
+        $randomImage = $images[array_rand($images)];
+
+        // จัดการ slash ทั้งหมดให้เป็น / ก่อนตัด path เพื่อใช้สร้าง asset URL
+        $normalizedPublicPath = str_replace('\\', '/', public_path());
+        $normalizedFilePath   = str_replace('\\', '/', $randomImage->getPathname());
+
+        $image = Str::of($normalizedFilePath)
+            ->replaceStart($normalizedPublicPath, '')
+            ->ltrim('/')
             ->toString();
 
         return new Image(

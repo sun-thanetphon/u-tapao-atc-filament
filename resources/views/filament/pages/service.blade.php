@@ -22,7 +22,7 @@
 
         <h3 class="text-lg font-medium mt-6">ติดต่อ</h3>
         <p class="mt-2 font-sans">
-            อีเมล: keaw0022@gmail.com
+            อีเมล: Banlang.Banlangpoe@gmail.com
         </p>
     </div>
 

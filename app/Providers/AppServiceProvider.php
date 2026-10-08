@@ -22,6 +22,7 @@ class AppServiceProvider extends ServiceProvider
             LoginResponse::class,
             CustomLoginResponse::class
         );
+
     }
 
     /**
@@ -31,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
     {
         config('app.env') !== 'local' && URL::forceScheme('https');
 
-        //เชื่อม Route filament กับ route web
+        // เชื่อม Route filament กับ route web
         Authenticate::redirectUsing(fn() => Filament::getCurrentPanel()->route('auth.login'));
 
         Gate::before(function ($user, $ability) {
