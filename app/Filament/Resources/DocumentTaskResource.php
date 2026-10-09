@@ -100,7 +100,7 @@ class DocumentTaskResource extends Resource
      */
     public static function statusFor(Document $record): string
     {
-        if ($record->acknowledges->isNotEmpty()) {
+        if ($record->acknowledges->contains('user_id', auth()->id())) {
             return 'acknowledged';
         }
 
@@ -144,7 +144,7 @@ class DocumentTaskResource extends Resource
                         ->grow(false)
                         ->getStateUsing(fn (Document $record) => static::statusFor($record))
                         ->formatStateUsing(fn (string $state, Document $record) => match ($state) {
-                            'acknowledged' => 'รับทราบแล้ว ' . static::thaiDate($record->acknowledges->first()->acknowledge_date),
+                            'acknowledged' => 'รับทราบแล้ว ' . static::thaiDate($record->acknowledges->firstWhere('user_id', auth()->id())->acknowledge_date),
                             'pending' => 'รอรับทราบ',
                             default => 'อ่านอย่างเดียว',
                         })

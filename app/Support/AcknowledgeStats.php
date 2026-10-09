@@ -14,17 +14,22 @@ use Illuminate\Support\Collection;
  */
 class AcknowledgeStats
 {
-    private static ?self $instance = null;
-
     /** @var Collection<int, array{id: int, code: string, name: string, sections: array<int>, required: int, done: int, rate: float}> */
     public readonly Collection $documents;
 
-    /** @var Collection<int, array{name: string, prefix: string, required: int, done: int, rate: float}> */
+    /** @var Collection<int, array{name: string, prefix: string, required: int, done: int, rate: ?float}> keyed by section id */
     public readonly Collection $sections;
 
+    /**
+     * คำนวณครั้งเดียวต่อ request แล้วใช้ร่วมกันทุก widget
+     */
     public static function get(): self
     {
-        return self::$instance ??= new self();
+        if (! app()->bound(self::class)) {
+            app()->instance(self::class, new self());
+        }
+
+        return app(self::class);
     }
 
     private function __construct()
@@ -84,7 +89,7 @@ class AcknowledgeStats
         $this->sections = Section::query()
             ->orderBy('id')
             ->get(['id', 'name', 'prefix'])
-            ->map(fn (Section $section) => [
+            ->mapWithKeys(fn (Section $section) => [$section->id => [
                 'name' => str_replace('-', ' ', $section->name),
                 'prefix' => $section->prefix,
                 'required' => $sectionTotals[$section->id]['required'] ?? 0,
@@ -92,7 +97,7 @@ class AcknowledgeStats
                 'rate' => ($sectionTotals[$section->id]['required'] ?? 0) > 0
                     ? $sectionTotals[$section->id]['done'] / $sectionTotals[$section->id]['required']
                     : null,
-            ]);
+            ]]);
     }
 
     public function required(): int
@@ -126,9 +131,6 @@ class AcknowledgeStats
      */
     public function sectionPrefixes(array $sectionIds): array
     {
-        static $prefixes = null;
-        $prefixes ??= Section::query()->pluck('prefix', 'id');
-
-        return collect($sectionIds)->map(fn (int $id) => $prefixes[$id] ?? '?')->all();
+        return collect($sectionIds)->map(fn (int $id) => $this->sections[$id]['prefix'] ?? '?')->all();
     }
 }
