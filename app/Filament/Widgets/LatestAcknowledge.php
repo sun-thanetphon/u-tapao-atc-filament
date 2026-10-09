@@ -2,38 +2,28 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Document;
 use App\Models\DocumentAcknowledge;
-use App\Models\User;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
+use Filament\Widgets\Widget;
 
-class LatestAcknowledge extends BaseWidget
+class LatestAcknowledge extends Widget
 {
-    protected static ?int $sort = 3;
+    protected static string $view = 'filament.widgets.latest-acknowledge';
 
-    protected int | string | array $columnSpan = 'full';
+    protected static bool $isLazy = false;
 
-    protected static ?string $heading = 'รายการผู้รับทราบล่าสุด';
+    protected static ?int $sort = 5;
 
+    protected int | string | array $columnSpan = ['default' => 'full', 'lg' => 1];
 
-    public function table(Table $table): Table
+    protected function getViewData(): array
     {
-        return $table
-            ->query(
-                DocumentAcknowledge::query()->latest()
-            )
-            ->columns([
-                Tables\Columns\TextColumn::make('user.firstname')
-                    ->getStateUsing(fn($record) => $record->user->getFullName())
-                    ->label('ผู้รับทราบ'),
-                Tables\Columns\TextColumn::make('document.name')
-                    ->label('ชื่อเอกสาร'),
-                Tables\Columns\TextColumn::make('acknowledge_date')
-                    ->label('รับทราบเมื่อ')
-                    ->dateTime('d-m-Y')
-                    ->sortable()
-            ]);
+        return [
+            'items' => DocumentAcknowledge::query()
+                ->with(['user.rank', 'user.section', 'document:id,code,name'])
+                ->latest('acknowledge_date')
+                ->limit(7)
+                ->get()
+                ->filter(fn (DocumentAcknowledge $acknowledge) => $acknowledge->user && $acknowledge->document),
+        ];
     }
 }

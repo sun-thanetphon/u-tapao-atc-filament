@@ -890,3 +890,532 @@
     justify-content: flex-start;
     overflow-wrap: anywhere;
 }
+
+/* ---------- Dashboard ---------- */
+
+/* ภาพรวม: อัตราการรับทราบ + มาตรวัดแบบไฟนำร่อน */
+.uta-overview {
+    display: grid;
+    gap: 1.5rem;
+    padding: 1.5rem;
+}
+
+.uta-overview-label {
+    color: rgb(var(--gray-500));
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.uta-overview-rate {
+    margin-top: 0.25rem;
+    color: var(--uta-navy);
+    line-height: 1;
+}
+
+.dark .uta-overview-rate {
+    color: #fff;
+}
+
+.uta-overview-rate-value {
+    font-size: 3.5rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+}
+
+.uta-overview-rate-unit {
+    margin-left: 0.125rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.uta-meter {
+    display: grid;
+    grid-template-columns: repeat(24, minmax(0, 1fr));
+    gap: 3px;
+    margin-top: 1.25rem;
+}
+
+.uta-meter-cell {
+    height: 0.875rem;
+    border-radius: 2px;
+    background-color: rgb(var(--gray-200));
+}
+
+.dark .uta-meter-cell {
+    background-color: rgb(255 255 255 / 0.08);
+}
+
+.uta-meter-cell.is-on {
+    background-color: var(--uta-navy);
+}
+
+.dark .uta-meter-cell.is-on {
+    background-color: rgb(var(--primary-400));
+}
+
+/* ช่องสุดท้ายที่ติดเป็นสีทอง บอกตำแหน่งปัจจุบัน */
+.uta-meter-cell.is-on:has(+ .uta-meter-cell:not(.is-on)) {
+    background-color: var(--uta-amber);
+}
+
+.uta-overview-caption {
+    margin-top: 0.75rem;
+    color: rgb(var(--gray-600));
+    font-size: 0.875rem;
+}
+
+.dark .uta-overview-caption {
+    color: rgb(var(--gray-400));
+}
+
+.uta-overview-caption strong {
+    color: rgb(var(--gray-900));
+    font-weight: 600;
+}
+
+.dark .uta-overview-caption strong {
+    color: #fff;
+}
+
+.uta-overview-figures {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid rgb(var(--gray-200));
+}
+
+.dark .uta-overview-figures {
+    border-top-color: rgb(255 255 255 / 0.08);
+}
+
+.uta-overview-figures > div {
+    padding: 1rem 0.5rem 0;
+}
+
+.uta-overview-figures > div + div {
+    border-left: 1px solid rgb(var(--gray-200));
+}
+
+.dark .uta-overview-figures > div + div {
+    border-left-color: rgb(255 255 255 / 0.08);
+}
+
+.uta-overview-figures dt {
+    color: rgb(var(--gray-500));
+    font-size: 0.75rem;
+}
+
+.uta-overview-figures dd {
+    margin-top: 0.25rem;
+    color: rgb(var(--gray-900));
+    font-size: 1.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.dark .uta-overview-figures dd {
+    color: #fff;
+}
+
+.uta-overview-figures dd.is-alert {
+    color: var(--uta-red);
+}
+
+.dark .uta-overview-figures dd.is-alert {
+    color: #ff7a8c;
+}
+
+@media (min-width: 1024px) {
+    .uta-overview {
+        grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+        align-items: end;
+        gap: 3rem;
+        padding: 1.75rem 2rem;
+    }
+
+    .uta-overview-figures {
+        border-top: 0;
+    }
+
+    .uta-overview-figures > div {
+        padding: 0 0 0 1.5rem;
+    }
+
+    .uta-overview-figures > div:first-child {
+        border-left: 1px solid rgb(var(--gray-200));
+    }
+
+    .dark .uta-overview-figures > div:first-child {
+        border-left-color: rgb(255 255 255 / 0.08);
+    }
+
+    .uta-overview-figures dd {
+        font-size: 2.25rem;
+    }
+}
+
+/* กระดาน flight strip */
+.uta-board-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem 0.75rem;
+}
+
+.uta-board-all {
+    color: rgb(var(--primary-600));
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.dark .uta-board-all {
+    color: rgb(var(--primary-400));
+}
+
+.uta-board-all:hover {
+    text-decoration: underline;
+}
+
+.uta-strips {
+    display: grid;
+    gap: 0.375rem;
+    margin: 0 0.75rem 0.75rem;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    background-color: rgb(var(--gray-100));
+}
+
+.dark .uta-strips {
+    background-color: rgb(0 0 0 / 0.25);
+}
+
+.uta-strip {
+    --uta-strip-color: var(--uta-sky);
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "name rate"
+        "id id"
+        "progress progress";
+    gap: 0.375rem 1rem;
+    padding: 0.75rem 1rem 0.75rem 1.25rem;
+    border-radius: 0.25rem;
+    background-color: #fff;
+    box-shadow: 0 1px 1px rgb(16 24 40 / 0.06);
+    transition: box-shadow 0.15s ease;
+}
+
+.dark .uta-strip {
+    background-color: rgb(var(--gray-900));
+}
+
+/* แถบสีด้านซ้ายบอกสถานะ เหมือนสีของ strip holder */
+.uta-strip::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 6px;
+    border-radius: 0.25rem 0 0 0.25rem;
+    background-color: var(--uta-strip-color);
+}
+
+.uta-strip[data-status="low"] { --uta-strip-color: var(--uta-red); }
+.uta-strip[data-status="mid"] { --uta-strip-color: var(--uta-amber); }
+.uta-strip[data-status="high"] { --uta-strip-color: var(--uta-sky); }
+
+.uta-strip:hover {
+    box-shadow: 0 0 0 1px rgb(var(--primary-300)), 0 4px 12px rgb(16 24 40 / 0.08);
+}
+
+.uta-strip:focus-visible {
+    outline: 2px solid var(--uta-sky);
+    outline-offset: 2px;
+}
+
+.uta-strip-id {
+    grid-area: id;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.uta-strip-code {
+    color: rgb(var(--gray-500));
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.uta-strip-sections {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.uta-strip-sections span {
+    padding: 0 0.375rem;
+    border: 1px solid rgb(var(--gray-300));
+    border-radius: 0.25rem;
+    color: rgb(var(--gray-600));
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+}
+
+.dark .uta-strip-sections span {
+    border-color: rgb(255 255 255 / 0.15);
+    color: rgb(var(--gray-300));
+}
+
+.uta-strip-name {
+    grid-area: name;
+    min-width: 0;
+    color: rgb(var(--gray-900));
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+.dark .uta-strip-name {
+    color: #fff;
+}
+
+.uta-strip-progress {
+    grid-area: progress;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.uta-strip-bar {
+    display: block;
+    flex: 1;
+    height: 6px;
+    border-radius: 999px;
+    background-color: rgb(var(--gray-200));
+    overflow: hidden;
+}
+
+.dark .uta-strip-bar {
+    background-color: rgb(255 255 255 / 0.08);
+}
+
+.uta-strip-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background-color: var(--uta-strip-color, var(--uta-navy));
+}
+
+.dark .uta-sections .uta-strip-bar > span {
+    background-color: rgb(var(--primary-400));
+}
+
+.uta-strip-count {
+    color: rgb(var(--gray-500));
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.uta-strip-rate {
+    grid-area: rate;
+    color: rgb(var(--gray-900));
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.dark .uta-strip-rate {
+    color: #fff;
+}
+
+@media (min-width: 768px) {
+    .uta-strip {
+        grid-template-columns: 9.5rem minmax(0, 1fr) 11rem 3.5rem;
+        grid-template-areas: "id name progress rate";
+        align-items: center;
+    }
+
+    .uta-strip-id {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+        padding-right: 1rem;
+        border-right: 1px dashed rgb(var(--gray-300));
+    }
+
+    .dark .uta-strip-id {
+        border-right-color: rgb(255 255 255 / 0.12);
+    }
+
+    .uta-strip-rate {
+        text-align: right;
+    }
+}
+
+.uta-board-more {
+    padding: 0 1.25rem 1rem;
+    color: rgb(var(--gray-500));
+    font-size: 0.8125rem;
+}
+
+.uta-board-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 2.5rem 1.25rem 3rem;
+    color: rgb(var(--gray-500));
+}
+
+.uta-board-empty-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    color: #10b981;
+}
+
+/* ความคืบหน้าตามแผนก */
+.uta-section-list {
+    display: grid;
+    gap: 1.25rem;
+    padding: 0.5rem 1.25rem 1.5rem;
+}
+
+.uta-section-row {
+    display: flex;
+    gap: 0.875rem;
+}
+
+.uta-section-prefix {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.5rem;
+    background-color: var(--uta-navy);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.dark .uta-section-prefix {
+    background-color: rgb(255 255 255 / 0.08);
+    color: var(--uta-amber);
+}
+
+.uta-section-body {
+    display: grid;
+    flex: 1;
+    gap: 0.375rem;
+    min-width: 0;
+}
+
+.uta-section-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.uta-section-name {
+    overflow: hidden;
+    color: rgb(var(--gray-900));
+    font-size: 0.9375rem;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dark .uta-section-name {
+    color: #fff;
+}
+
+.uta-section-rate {
+    color: rgb(var(--gray-900));
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.dark .uta-section-rate {
+    color: #fff;
+}
+
+.uta-section-count {
+    color: rgb(var(--gray-500));
+    font-size: 0.75rem;
+}
+
+/* รับทราบล่าสุด */
+.uta-latest-list {
+    padding: 0 0.75rem 0.75rem;
+}
+
+.uta-latest-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.5rem;
+    border-bottom: 1px solid rgb(var(--gray-100));
+}
+
+.dark .uta-latest-row {
+    border-bottom-color: rgb(255 255 255 / 0.06);
+}
+
+.uta-latest-row:last-child {
+    border-bottom: 0;
+}
+
+.uta-latest-avatar {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+    background-color: rgb(var(--primary-50));
+    color: var(--uta-navy);
+    font-weight: 600;
+}
+
+.dark .uta-latest-avatar {
+    background-color: rgb(255 255 255 / 0.08);
+    color: #fff;
+}
+
+.uta-latest-body {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+}
+
+.uta-latest-name {
+    overflow: hidden;
+    color: rgb(var(--gray-900));
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dark .uta-latest-name {
+    color: #fff;
+}
+
+.uta-latest-doc {
+    overflow: hidden;
+    color: rgb(var(--gray-500));
+    font-size: 0.8125rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.uta-latest-time {
+    flex-shrink: 0;
+    color: rgb(var(--gray-500));
+    font-size: 0.75rem;
+}
