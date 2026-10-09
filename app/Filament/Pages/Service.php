@@ -12,5 +12,5 @@ class Service extends Page
 
     protected static ?int $navigationSort = 2;
 
-    protected static ?string $navigationGroup = 'URL & Public';
+    protected static ?string $navigationGroup = 'Public Links';
 }

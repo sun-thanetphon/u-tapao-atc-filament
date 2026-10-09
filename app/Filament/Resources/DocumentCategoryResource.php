@@ -22,7 +22,7 @@ class DocumentCategoryResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationGroup = 'Documents management';
+    protected static ?string $navigationGroup = 'Document Management';
 
     public static function canAccess(): bool
     {

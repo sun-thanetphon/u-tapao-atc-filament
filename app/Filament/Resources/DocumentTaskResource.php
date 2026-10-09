@@ -26,7 +26,7 @@ class DocumentTaskResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationGroup = 'Tasks & Acknowledge';
+    protected static ?string $navigationGroup = 'Tasks & Acknowledgements';
 
     protected static ?string $label = 'Document Tasks';
 
