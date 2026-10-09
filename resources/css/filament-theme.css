@@ -170,3 +170,141 @@
 .dark .fi-wi-stats-overview-stat-value {
     color: #fff;
 }
+
+/* ---------- หน้า login: ภาพสนามบิน + ฟอร์ม ---------- */
+
+.uta-login {
+    display: grid;
+    min-height: 100vh;
+    grid-template-rows: auto 1fr;
+    background-color: #fff;
+}
+
+.dark .uta-login {
+    background-color: rgb(var(--gray-950));
+}
+
+.uta-login-brand {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 15rem;
+    background-image:
+        linear-gradient(180deg, rgb(19 41 75 / 0.55) 0%, rgb(14 31 58 / 0.92) 100%),
+        var(--filament-backgrounds-image, none);
+    background-color: var(--uta-navy);
+    background-position: center;
+    background-size: cover;
+    color: #fff;
+}
+
+.uta-login-brand-inner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem 1.5rem 1.75rem;
+}
+
+.uta-login-logo {
+    width: 4.5rem;
+    height: 4.5rem;
+    flex-shrink: 0;
+    filter: drop-shadow(0 4px 12px rgb(0 0 0 / 0.35));
+}
+
+.uta-login-name {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+}
+
+.uta-login-desc {
+    margin-top: 0.35rem;
+    color: rgb(255 255 255 / 0.78);
+    font-size: 0.95rem;
+}
+
+.uta-login-checker {
+    height: 12px;
+    background: var(--uta-checker);
+    background-size: 12px 12px;
+}
+
+.uta-login-panel {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2.5rem 1.5rem 3rem;
+}
+
+.uta-login-panel-inner {
+    width: 100%;
+    max-width: 24rem;
+}
+
+.uta-login .fi-simple-header {
+    align-items: flex-start;
+}
+
+.uta-login .fi-simple-header-heading,
+.uta-login .fi-simple-header-subheading {
+    text-align: left;
+}
+
+.uta-login .fi-simple-header-heading {
+    color: var(--uta-navy);
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.dark .uta-login .fi-simple-header-heading {
+    color: #fff;
+}
+
+@media (min-width: 1024px) {
+    .uta-login {
+        grid-template-rows: none;
+        grid-template-columns: minmax(0, 1fr) 32rem;
+    }
+
+    .uta-login-brand {
+        min-height: 100vh;
+        flex-direction: row;
+        justify-content: flex-start;
+    }
+
+    .uta-login-brand-inner {
+        flex: 1;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-end;
+        gap: 1.5rem;
+        padding: 4rem 4rem 4.5rem;
+    }
+
+    .uta-login-logo {
+        width: 8rem;
+        height: 8rem;
+    }
+
+    .uta-login-name {
+        font-size: clamp(2.75rem, 4vw, 4rem);
+    }
+
+    .uta-login-desc {
+        font-size: 1.15rem;
+    }
+
+    /* แถบ checker เป็นเส้นตั้งคั่นระหว่างภาพกับฟอร์ม */
+    .uta-login-checker {
+        width: 12px;
+        height: auto;
+    }
+
+    .uta-login-panel {
+        align-items: center;
+        padding: 3rem;
+    }
+}
