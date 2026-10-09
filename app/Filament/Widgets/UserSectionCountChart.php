@@ -11,13 +11,15 @@ class UserSectionCountChart extends ChartWidget
 
     protected static ?int $sort = 2;
 
+    protected static string $color = 'warning';
+
     protected function getData(): array
     {
         $sectionCountUsers = Section::withCount('users')->get();
         return [
             'datasets' => [
                 [
-                    'label' => 'Blog posts created',
+                    'label' => 'จำนวนผู้ใช้',
                     'data' => $sectionCountUsers->pluck('users_count'),
                 ],
             ],

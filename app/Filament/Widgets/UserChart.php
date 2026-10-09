@@ -13,7 +13,7 @@ class UserChart extends ChartWidget
 
     protected static ?int $sort = 1;
 
-    protected static string $color = 'success';
+    protected static string $color = 'primary';
 
     protected function getData(): array
     {
@@ -28,7 +28,7 @@ class UserChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Blog posts',
+                    'label' => 'ผู้ใช้ใหม่',
                     'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
                 ],
             ],
