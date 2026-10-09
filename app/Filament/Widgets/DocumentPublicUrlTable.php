@@ -3,43 +3,15 @@
 namespace App\Filament\Widgets;
 
 use App\Enums\PublicUrlCategoryEnum;
-use App\Models\PublicUrl;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
 
-class DocumentPublicUrlTable extends BaseWidget
+class DocumentPublicUrlTable extends PublicUrlListWidget
 {
-    protected static ?int $sort = 3;
-
-    protected int | string | array $columnSpan = 'full';
-
     protected static ?string $heading = 'เอกสารสำคัญ';
 
-    public static function isDiscovered(): bool
-    {
-        return false;
-    }
+    protected static string $icon = 'heroicon-o-document-text';
 
-    public function table(Table $table): Table
+    protected static function category(): PublicUrlCategoryEnum
     {
-        return $table
-            ->query(
-                PublicUrl::query()
-                    ->publish()
-                    ->where('category', PublicUrlCategoryEnum::DOCUMENT->value)
-                    ->ordered()
-            )
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->url(fn($record) => $record->url)
-                    ->openUrlInNewTab()
-                    ->color('primary')
-                    ->searchable(),
-            ])
-            ->paginationPageOptions([5])
-            ->actions([
-                //
-            ]);
+        return PublicUrlCategoryEnum::DOCUMENT;
     }
 }

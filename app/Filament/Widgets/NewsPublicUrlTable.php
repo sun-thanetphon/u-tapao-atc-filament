@@ -3,43 +3,23 @@
 namespace App\Filament\Widgets;
 
 use App\Enums\PublicUrlCategoryEnum;
-use App\Models\PublicUrl;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
 
-class NewsPublicUrlTable extends BaseWidget
+class NewsPublicUrlTable extends PublicUrlListWidget
 {
-    protected static ?int $sort = 3;
-
-    protected int | string | array $columnSpan = 'full';
-
     protected static ?string $heading = 'ประชาสัมพันธ์';
 
-    public static function isDiscovered(): bool
+    protected static string $icon = 'heroicon-o-megaphone';
+
+    protected static function category(): PublicUrlCategoryEnum
     {
-        return false;
+        return PublicUrlCategoryEnum::NEWS;
     }
 
-    public function table(Table $table): Table
+    protected function getImages(): array
     {
-        return $table
-            ->query(
-                PublicUrl::query()
-                    ->publish()
-                    ->where('category', PublicUrlCategoryEnum::NEWS->value)
-                    ->ordered()
-            )
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->url(fn($record) => $record->url)
-                    ->openUrlInNewTab()
-                    ->color('primary')
-                    ->searchable(),
-            ])
-            ->paginationPageOptions([5])
-            ->actions([
-                //
-            ]);
+        return [
+            asset('assets/home/IMG_A3D5B332BB77-1.jpeg'),
+            asset('assets/home/IMG_0E0CBBC7CE7B-2.jpeg'),
+        ];
     }
 }

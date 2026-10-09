@@ -48,9 +48,9 @@
     content: "";
     position: absolute;
     inset: auto 0 0 0;
-    height: 4px;
+    height: 6px;
     background: var(--uta-checker);
-    background-size: 4px 4px;
+    background-size: 6px 6px;
 }
 
 .fi-sidebar .fi-sidebar-header .fi-icon-btn {
@@ -306,5 +306,217 @@
     .uta-login-panel {
         align-items: center;
         padding: 3rem;
+    }
+}
+
+/* ---------- หน้า Home: การ์ดรายการลิงก์ ---------- */
+
+.uta-home {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "roster"
+        "docs"
+        "news";
+}
+
+.uta-home-roster { grid-area: roster; }
+.uta-home-news { grid-area: news; }
+.uta-home-docs { grid-area: docs; }
+
+@media (min-width: 1024px) {
+    .uta-home {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        grid-template-areas:
+            "roster news"
+            "docs docs";
+        align-items: start;
+    }
+
+    .uta-home-docs .uta-links {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 1.5rem;
+    }
+}
+
+.uta-card {
+    border-radius: 0.75rem;
+    background-color: #fff;
+    box-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 0 0 1px rgb(var(--gray-200));
+    overflow: hidden;
+}
+
+.dark .uta-card {
+    background-color: rgb(var(--gray-900));
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+.uta-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 1rem 1.25rem 0.75rem;
+}
+
+.uta-card-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--uta-navy);
+}
+
+.dark .uta-card-icon {
+    color: var(--uta-amber);
+}
+
+.uta-card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--uta-navy);
+}
+
+.dark .uta-card-title {
+    color: #fff;
+}
+
+/* Duty Roster เป็นการ์ดหลัก: หัวการ์ดเป็นแถบ navy */
+.uta-home-roster .uta-card-header {
+    background-color: var(--uta-navy);
+    padding-block: 0.875rem;
+}
+
+.uta-home-roster .uta-card-title {
+    color: #fff;
+}
+
+.uta-home-roster .uta-card-icon {
+    color: var(--uta-amber);
+}
+
+.uta-links {
+    padding: 0.25rem 0.75rem 0.75rem;
+}
+
+.uta-home-roster .uta-links {
+    padding-top: 0.5rem;
+}
+
+.uta-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.5rem;
+    border-bottom: 1px solid rgb(var(--gray-100));
+    color: rgb(var(--gray-800));
+    font-size: 0.9375rem;
+    line-height: 1.5;
+}
+
+.dark .uta-link {
+    border-bottom-color: rgb(255 255 255 / 0.06);
+    color: rgb(var(--gray-200));
+}
+
+.uta-links li:last-child .uta-link {
+    border-bottom: 0;
+}
+
+.uta-home-docs .uta-links li:nth-last-child(2):nth-child(odd) .uta-link {
+    border-bottom: 0;
+}
+
+.uta-link-name {
+    flex: 1;
+    min-width: 0;
+}
+
+.uta-link-ext {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    color: rgb(var(--gray-400));
+}
+
+.uta-link:hover,
+.uta-link:focus-visible {
+    border-radius: 0.5rem;
+    background-color: rgb(var(--primary-50));
+    color: var(--uta-navy);
+}
+
+.dark .uta-link:hover,
+.dark .uta-link:focus-visible {
+    background-color: rgb(255 255 255 / 0.05);
+    color: #fff;
+}
+
+.uta-link:hover .uta-link-ext {
+    color: var(--uta-navy);
+}
+
+.dark .uta-link:hover .uta-link-ext {
+    color: var(--uta-amber);
+}
+
+.uta-link:focus-visible {
+    outline: 2px solid var(--uta-sky);
+    outline-offset: -2px;
+}
+
+.uta-empty {
+    padding: 0.75rem 1.25rem 1.25rem;
+    color: rgb(var(--gray-500));
+    font-size: 0.875rem;
+}
+
+/* สไลด์รูปในการ์ดประชาสัมพันธ์ */
+.uta-slider {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    margin: 0 1.25rem 0.5rem;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background-color: var(--uta-navy-deep);
+}
+
+.uta-slider-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0;
+    transition: opacity 0.7s ease;
+}
+
+.uta-slider-image.is-active {
+    opacity: 1;
+}
+
+.uta-slider-dots {
+    position: absolute;
+    inset: auto 0 0.625rem 0;
+    display: flex;
+    justify-content: center;
+    gap: 0.375rem;
+}
+
+.uta-slider-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background-color: rgb(255 255 255 / 0.5);
+}
+
+.uta-slider-dot.is-active {
+    width: 1.25rem;
+    background-color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .uta-slider-image {
+        transition: none;
     }
 }
