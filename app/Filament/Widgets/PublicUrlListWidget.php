@@ -29,16 +29,6 @@ abstract class PublicUrlListWidget extends Widget
         return false;
     }
 
-    /**
-     * รูปที่แสดงเป็นสไลด์ด้านบนของรายการ
-     *
-     * @return array<string>
-     */
-    protected function getImages(): array
-    {
-        return [];
-    }
-
     protected function getViewData(): array
     {
         $links = PublicUrl::query()
@@ -52,7 +42,6 @@ abstract class PublicUrlListWidget extends Widget
             'heading' => static::$heading,
             'icon' => static::$icon,
             'links' => $links,
-            'images' => $this->getImages(),
         ];
     }
 }

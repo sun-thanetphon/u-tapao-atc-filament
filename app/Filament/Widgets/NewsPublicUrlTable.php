@@ -14,12 +14,4 @@ class NewsPublicUrlTable extends PublicUrlListWidget
     {
         return PublicUrlCategoryEnum::NEWS;
     }
-
-    protected function getImages(): array
-    {
-        return [
-            asset('assets/home/IMG_A3D5B332BB77-1.jpeg'),
-            asset('assets/home/IMG_0E0CBBC7CE7B-2.jpeg'),
-        ];
-    }
 }

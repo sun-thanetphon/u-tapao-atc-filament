@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use Carbon\Carbon;
 use Filament\Pages\Page;
 
 class Home extends Page
@@ -14,14 +15,42 @@ class Home extends Page
 
     public function getHeading(): string
     {
-        return 'สวัสดี, ' . auth()->user()->getFullName();
+        // หัวหน้าแสดงอยู่ในส่วน hero ของ view แทน
+        return '';
     }
 
-    public function getSubheading(): string
+    protected function getViewData(): array
     {
         $today = now()->locale('th');
+        $validUntil = Carbon::create(2030, 1, 13)->locale('th');
 
-        // วันที่แบบ พ.ศ. เช่น "วันเสาร์ที่ 10 ตุลาคม 2569"
-        return 'วัน' . $today->translatedFormat('l') . 'ที่ ' . $today->translatedFormat('j F') . ' ' . ($today->year + 543);
+        return [
+            'greeting' => 'สวัสดี, ' . auth()->user()->getFullName(),
+            'today' => 'วัน' . $today->translatedFormat('l') . 'ที่ ' . $this->thaiDate($today, 'j F'),
+            'certificate' => [
+                'title' => 'ใบรับรองบริการการเดินอากาศ',
+                'subtitle' => 'Air Navigation Services Certificate',
+                'number' => 'ATM-ATS 01',
+                'issuer' => 'สำนักงานการบินพลเรือนแห่งประเทศไทย (กพท.)',
+                'validUntil' => $this->thaiDate($validUntil, 'j M'),
+                'remaining' => $today->isBefore($validUntil)
+                    ? 'อีก ' . $today->diff($validUntil)->format('%y ปี %m เดือน')
+                    : 'หมดอายุแล้ว',
+                'isValid' => $today->isBefore($validUntil),
+                'services' => ['Approach Control Service', 'Aerodrome Control Service'],
+                'pages' => [
+                    asset('assets/home/IMG_A3D5B332BB77-1.jpeg'),
+                    asset('assets/home/IMG_0E0CBBC7CE7B-2.jpeg'),
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * วันที่แบบ พ.ศ. เช่น "10 ตุลาคม 2569"
+     */
+    private function thaiDate(Carbon $date, string $format): string
+    {
+        return $date->translatedFormat($format) . ' ' . ($date->year + 543);
     }
 }
