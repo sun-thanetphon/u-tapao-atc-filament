@@ -22,7 +22,7 @@ class PublicUrlResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationGroup = 'URL & Public';
+    protected static ?string $navigationGroup = 'Public Links';
 
     public static function canAccess(): bool
     {

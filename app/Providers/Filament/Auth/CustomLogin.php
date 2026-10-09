@@ -13,6 +13,19 @@ use Filament\Models\Contracts\FilamentUser;
 
 class CustomLogin extends Login
 {
+    protected static string $layout = 'filament.layouts.login';
+
+    public function hasLogo(): bool
+    {
+        // โลโก้แสดงอยู่ในแผงภาพด้านซ้ายแล้ว
+        return false;
+    }
+
+    public function getSubheading(): ?string
+    {
+        return 'Use your username and password';
+    }
+
     public function authenticate(): ?LoginResponse
     {
         try {
