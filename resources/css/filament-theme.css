@@ -1419,3 +1419,58 @@
     color: rgb(var(--gray-500));
     font-size: 0.75rem;
 }
+
+/* ---------- เอกสารของฉัน (Document Tasks) ---------- */
+
+.fi-ta-record.uta-task {
+    position: relative;
+}
+
+/* เอกสารที่รอรับทราบมีแถบสีทองด้านซ้าย เหมือน strip บน Dashboard */
+.fi-ta-record.uta-task-pending::before {
+    content: "";
+    position: absolute;
+    inset: 0.625rem auto 0.625rem 0;
+    width: 4px;
+    border-radius: 0 4px 4px 0;
+    background-color: var(--uta-amber);
+}
+
+.fi-ta-record.uta-task-acknowledged .fi-ta-text-item-label {
+    color: rgb(var(--gray-600));
+}
+
+.dark .fi-ta-record.uta-task-acknowledged .fi-ta-text-item-label {
+    color: rgb(var(--gray-400));
+}
+
+.uta-task-category {
+    margin-left: 0.625rem;
+    padding-left: 0.625rem;
+    border-left: 1px solid rgb(var(--gray-300));
+}
+
+.dark .uta-task-category {
+    border-left-color: rgb(255 255 255 / 0.15);
+}
+
+.fi-ta-record.uta-task .fi-ta-actions {
+    gap: 0.5rem;
+}
+
+@media (max-width: 767px) {
+    /* มือถือ: ปุ่มเต็มความกว้าง กดง่าย */
+    .fi-ta-record.uta-task .fi-ta-actions {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .fi-ta-record.uta-task .fi-ta-actions > * {
+        flex: 1;
+    }
+
+    .fi-ta-record.uta-task .fi-ta-actions .fi-btn {
+        width: 100%;
+        min-height: 2.75rem;
+    }
+}
