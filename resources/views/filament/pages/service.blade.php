@@ -1,29 +1,45 @@
 <x-filament-panels::page>
 
-    <div class="p-6 rounded-lg borde">
-        <h2 class="text-xl font-medium">คำแนะนำการใช้บริการ</h2>
-        <p class="mt-4 font-sans">
-            ระบบจัดเก็บและติดตามการรับทราบเอกสารนี้ จัดทำขึ้นเพื่อประโยชน์ต่อทางราชการ และเพื่อเพิ่มประสิทธิภาพในการปฏิบัติงานภายในหน่วยงาน โดยมุ่งแก้ไขปัญหาในการจัดเก็บ ค้นหา และติดตามการรับทราบเอกสารให้มีความสะดวก รวดเร็ว ถูกต้อง และเป็นระบบมากยิ่งขึ้น
-        </p>
-        <p class="mt-2 font-sans">
-            การพัฒนาและดูแลระบบดังกล่าวดำเนินการโดยความสมัครใจของผู้จัดทำ ผู้พัฒนา และผู้สนับสนุน โดยมิได้รับค่าตอบแทนหรือผลประโยชน์ใดจากหน่วยงาน และมิได้มีวัตถุประสงค์เชิงพาณิชย์
-        </p>
+    <div class="uta-service">
+        <article class="uta-card uta-service-about">
+            <h2 class="uta-service-title">คำแนะนำการใช้บริการ</h2>
+            <p>
+                ระบบจัดเก็บและติดตามการรับทราบเอกสารนี้ จัดทำขึ้นเพื่อประโยชน์ต่อทางราชการ และเพื่อเพิ่มประสิทธิภาพในการปฏิบัติงานภายในหน่วยงาน โดยมุ่งแก้ไขปัญหาในการจัดเก็บ ค้นหา และติดตามการรับทราบเอกสารให้มีความสะดวก รวดเร็ว ถูกต้อง และเป็นระบบมากยิ่งขึ้น
+            </p>
+            <p>
+                การพัฒนาและดูแลระบบดังกล่าวดำเนินการโดยความสมัครใจของผู้จัดทำ ผู้พัฒนา และผู้สนับสนุน โดยมิได้รับค่าตอบแทนหรือผลประโยชน์ใดจากหน่วยงาน และมิได้มีวัตถุประสงค์เชิงพาณิชย์
+            </p>
+        </article>
 
-        <h3 class="text-lg font-medium mt-6">ผู้จัดทำและผู้พัฒนา</h3>
-        <ul class="list-disc pl-6 mt-2 font-sans">
-            <li>พ.จ.อ.บัลลังก์ บัลลังก์โพธิ์</li>
-        </ul>
+        <aside class="uta-card uta-service-people">
+            <section>
+                <h3 class="uta-service-subtitle">ผู้จัดทำและผู้พัฒนา</h3>
+                <ul class="uta-people">
+                    <li>พ.จ.อ.บัลลังก์ บัลลังก์โพธิ์</li>
+                </ul>
+            </section>
 
-        <h3 class="text-lg font-medium mt-6">ดูแลระบบและสนับสนุนโดย</h3>
-        <ul class="list-disc pl-6 mt-2 font-sans">
-            <li>ร.ท.ลิขิต ร่วมสุข</li>
-            <li>น.ต.ทองวิทย์ อิ้งชัยภูมิ</li>
-        </ul>
+            <section>
+                <h3 class="uta-service-subtitle">ดูแลระบบและสนับสนุนโดย</h3>
+                <ul class="uta-people">
+                    <li>ร.ท.ลิขิต ร่วมสุข</li>
+                    <li>น.ต.ทองวิทย์ อิ้งชัยภูมิ</li>
+                </ul>
+            </section>
 
-        <h3 class="text-lg font-medium mt-6">ติดต่อ</h3>
-        <p class="mt-2 font-sans">
-            อีเมล: Banlang.Banlangpoe@gmail.com
-        </p>
+            <section>
+                <h3 class="uta-service-subtitle">ติดต่อ</h3>
+                <x-filament::button
+                    tag="a"
+                    href="mailto:Banlang.Banlangpoe@gmail.com"
+                    icon="heroicon-m-envelope"
+                    color="gray"
+                    class="uta-service-mail"
+                >
+                    Banlang.Banlangpoe@gmail.com
+                </x-filament::button>
+            </section>
+        </aside>
     </div>
 
 </x-filament-panels::page>

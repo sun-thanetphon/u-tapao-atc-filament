@@ -520,3 +520,78 @@
         transition: none;
     }
 }
+
+/* ---------- หน้า Service ---------- */
+
+.uta-service {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+}
+
+@media (min-width: 1024px) {
+    .uta-service {
+        grid-template-columns: minmax(0, 1fr) 20rem;
+    }
+}
+
+.uta-service-about {
+    padding: 1.75rem 2rem 2rem;
+}
+
+.uta-service-about p {
+    max-width: 42rem;
+    margin-top: 1rem;
+    color: rgb(var(--gray-700));
+    font-size: 1rem;
+    line-height: 1.85;
+}
+
+.dark .uta-service-about p {
+    color: rgb(var(--gray-300));
+}
+
+.uta-service-title {
+    color: var(--uta-navy);
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.dark .uta-service-title {
+    color: #fff;
+}
+
+.uta-service-people {
+    display: grid;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    border-top: 4px solid var(--uta-navy);
+}
+
+.uta-service-subtitle {
+    color: rgb(var(--gray-500));
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.uta-people {
+    margin-top: 0.5rem;
+}
+
+.uta-people li {
+    padding: 0.375rem 0;
+    color: rgb(var(--gray-900));
+    font-weight: 500;
+}
+
+.dark .uta-people li {
+    color: #fff;
+}
+
+.uta-service-mail {
+    width: 100%;
+    margin-top: 0.5rem;
+    justify-content: flex-start;
+    overflow-wrap: anywhere;
+}
