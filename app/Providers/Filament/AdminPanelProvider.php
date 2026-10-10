@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Custom\PublicHtmlImages;
+use App\Http\Middleware\ForcePasswordChange;
 use App\Providers\Filament\Auth\CustomLogin;
 use App\Providers\Filament\Auth\CustomRegister;
 use App\Providers\Filament\Auth\CustomRequestPasswordReset;
@@ -110,6 +111,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                ForcePasswordChange::class,
             ]);
     }
 }

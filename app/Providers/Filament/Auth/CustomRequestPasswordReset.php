@@ -2,23 +2,40 @@
 
 namespace App\Providers\Filament\Auth;
 
+use App\Models\PasswordResetRequest;
 use App\Models\User;
+use App\Support\PasswordResetLink;
 use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
-use Exception;
-use Filament\Facades\Filament;
 use Filament\Forms\Components\Component;
-use Filament\Notifications\Auth\ResetPassword as ResetPasswordNotification;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Auth\PasswordReset\RequestPasswordReset;
-use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Password;
 use Throwable;
 
+/**
+ * @property Form $usernameForm
+ */
 class CustomRequestPasswordReset extends RequestPasswordReset
 {
     protected static string $layout = 'filament.layouts.login';
+
+    protected static string $view = 'filament.pages.auth.request-password-reset';
+
+    /**
+     * @var array<string, mixed> | null
+     */
+    public ?array $usernameData = [];
+
+    public function mount(): void
+    {
+        parent::mount();
+
+        $this->usernameForm->fill();
+    }
 
     public function hasLogo(): bool
     {
@@ -29,6 +46,26 @@ class CustomRequestPasswordReset extends RequestPasswordReset
     public function getHeading(): string | Htmlable
     {
         return 'ลืมรหัสผ่าน';
+    }
+
+    /**
+     * @return array<int | string, string | Form>
+     */
+    protected function getForms(): array
+    {
+        return [
+            ...parent::getForms(),
+            'usernameForm' => $this->makeForm()
+                ->schema([
+                    TextInput::make('username')
+                        ->label('ชื่อผู้ใช้ (Username)')
+                        ->helperText('ผู้ดูแลระบบจะตั้งรหัสผ่านชั่วคราวให้ แล้วแจ้งคุณโดยตรง')
+                        ->required()
+                        ->maxLength(255)
+                        ->autocomplete('username'),
+                ])
+                ->statePath('usernameData'),
+        ];
     }
 
     protected function getEmailFormComponent(): Component
@@ -59,6 +96,64 @@ class CustomRequestPasswordReset extends RequestPasswordReset
     }
 
     /**
+     * ขอให้ผู้ดูแลช่วยตั้งรหัสผ่าน สำหรับบัญชีที่ไม่มีอีเมล
+     */
+    public function requestByUsername(): void
+    {
+        try {
+            // 3 ครั้งต่อชั่วโมงต่อ IP เช่นเดียวกับฟอร์มอีเมล
+            $this->rateLimit(3, 3600);
+        } catch (TooManyRequestsException $exception) {
+            $this->getRateLimitedNotification($exception)?->send();
+
+            return;
+        }
+
+        $data = $this->usernameForm->getState();
+
+        $this->createAdminRequestIfEligible(trim((string) ($data['username'] ?? '')));
+
+        // ตอบเหมือนกันทุกกรณี เพื่อไม่ให้เดาได้ว่าชื่อผู้ใช้มีอยู่ในระบบหรือไม่
+        Notification::make()
+            ->title('หากชื่อผู้ใช้นี้มีอยู่ในระบบ เราได้ส่งคำขอถึงผู้ดูแลระบบแล้ว')
+            ->body('ผู้ดูแลระบบจะติดต่อกลับเพื่อแจ้งรหัสผ่านชั่วคราว')
+            ->success()
+            ->send();
+
+        $this->usernameForm->fill();
+    }
+
+    /**
+     * สร้างคำขอเฉพาะบัญชีที่ใช้งานอยู่ และมีคำขอที่ยังเปิดอยู่ได้ไม่เกินหนึ่งรายการต่อคน
+     */
+    protected function createAdminRequestIfEligible(string $username): void
+    {
+        if ($username === '') {
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($username) {
+                // SoftDeletes scope ตัดบัญชีที่ถูกลบออกให้แล้ว; ล็อกแถวผู้ใช้กันคำขอซ้อนกัน
+                $user = User::query()->where('username', $username)->lockForUpdate()->first();
+
+                if (! $user || ! $user->isActive()) {
+                    return;
+                }
+
+                PasswordResetRequest::query()->firstOrCreate([
+                    'user_id' => $user->id,
+                    'status' => PasswordResetRequest::STATUS_OPEN,
+                ]);
+            });
+        } catch (Throwable $e) {
+            Log::error('Failed to create admin password reset request', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * ตั้งงานส่งลิงก์ไว้ทำหลังตอบกลับ เพื่อให้เวลาตอบเท่ากันทุกกรณี (ไม่เปิดเผยว่ามีบัญชีหรือไม่)
      * ฮอสต์ไม่มี queue worker จึงใช้ terminating callback แทนคิว
      */
@@ -86,19 +181,7 @@ class CustomRequestPasswordReset extends RequestPasswordReset
                 return;
             }
 
-            Password::broker(Filament::getAuthPasswordBroker())->sendResetLink(
-                ['email' => $email],
-                function (CanResetPassword $user, string $token): void {
-                    if (! method_exists($user, 'notify')) {
-                        throw new Exception('Model [' . $user::class . '] does not have a [notify()] method.');
-                    }
-
-                    $notification = app(ResetPasswordNotification::class, ['token' => $token]);
-                    $notification->url = Filament::getResetPasswordUrl($token, $user);
-
-                    $user->notifyNow($notification);
-                },
-            );
+            PasswordResetLink::send($email);
         } catch (Throwable $e) {
             Log::error('Failed to send password reset link', [
                 'user_id' => $user?->id,
