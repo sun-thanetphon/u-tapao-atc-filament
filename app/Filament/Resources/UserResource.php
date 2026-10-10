@@ -10,7 +10,12 @@ use App\Filament\Resources\UserResource\RelationManagers;
 use App\Mail\RegistrationApprovedMail;
 use App\Mail\RegistrationRejectedMail;
 use App\Models\User;
+use App\Support\EmailImport;
+use App\Support\EmailImportException;
+use App\Support\EmailImportResult;
 use App\Support\SafeMail;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -95,6 +100,112 @@ class UserResource extends Resource
             )
             ->dehydrateStateUsing(fn($state) => filled(trim((string) $state)) ? trim($state) : null)
             ->dehydrated();
+    }
+
+    /**
+     * อ่านไฟล์นำเข้าอีเมลจากค่าของช่องอัปโหลด (ไฟล์ชั่วคราวระหว่างดูตัวอย่าง หรือ path ใน disk local หลังบันทึกแล้ว)
+     *
+     * @return list<array{row:int,username:string,email:string}>
+     */
+    public static function readEmailImportFile(mixed $file): array
+    {
+        $file = is_array($file) ? (collect($file)->first()) : $file;
+
+        if ($file instanceof \Illuminate\Http\UploadedFile) {
+            return (new EmailImport)->readFile($file->getRealPath(), $file->getClientOriginalExtension());
+        }
+
+        if (static::isStoredEmailImportPath($file)) {
+            try {
+                $exists = Storage::disk('local')->exists($file);
+                $fullPath = $exists ? Storage::disk('local')->path($file) : null;
+            } catch (\Throwable $e) {
+                $fullPath = null;
+            }
+
+            if ($fullPath !== null) {
+                return (new EmailImport)->readFile($fullPath, pathinfo($file, PATHINFO_EXTENSION));
+            }
+        }
+
+        throw new EmailImportException('ไม่พบไฟล์ที่อัปโหลด');
+    }
+
+    /**
+     * path ที่รับได้ต้องเป็นไฟล์ที่ action นี้เก็บเองใน email-imports/ เท่านั้น (ค่าจาก Livewire แก้ได้จากฝั่งผู้ใช้)
+     */
+    public static function isStoredEmailImportPath(mixed $path): bool
+    {
+        return is_string($path)
+            && ! str_contains($path, '..')
+            && preg_match('#^email-imports/[A-Za-z0-9._-]+\.(csv|xlsx|xls)\z#i', $path) === 1;
+    }
+
+    /**
+     * ตัวอย่างผลนำเข้าสำหรับขั้นตอนที่ 2 (ไม่เขียนฐานข้อมูล)
+     */
+    public static function emailImportPreview(mixed $file, bool $overwrite): \Illuminate\Contracts\View\View
+    {
+        $result = null;
+        $error = null;
+
+        // ยังไม่มีไฟล์ (เช่นยังอยู่ขั้นแรก) ไม่ต้องอ่านหรือแจ้งอะไร
+        if (blank($file)) {
+            return view('filament.resources.user-resource.email-import-preview', ['result' => null, 'error' => null]);
+        }
+
+        try {
+            $result = (new EmailImport)->analyse(static::readEmailImportFile($file), $overwrite, auth()->user());
+        } catch (EmailImportException $e) {
+            $error = $e->getMessage();
+        }
+
+        return view('filament.resources.user-resource.email-import-preview', ['result' => $result, 'error' => $error]);
+    }
+
+    /**
+     * ขั้นยืนยันนำเข้าอีเมล: ตรวจสิทธิ์ซ้ำฝั่งเซิร์ฟเวอร์ อ่านไฟล์ใหม่แล้วตรวจซ้ำกับฐานข้อมูลใน transaction เดียว
+     */
+    public static function runEmailImport(string $path, bool $overwrite): ?EmailImportResult
+    {
+        abort_unless(auth()->user()?->can(PermissionEnum::USER_EDIT), 403);
+
+        // ลบเฉพาะไฟล์ที่ผ่านการตรวจ path แล้วเท่านั้น ไม่เช่นนั้นห้ามแตะไฟล์ใดเลย
+        if (! static::isStoredEmailImportPath($path)) {
+            Notification::make()->title('ไม่พบไฟล์ที่อัปโหลด')->danger()->send();
+
+            return null;
+        }
+
+        try {
+            $rows = static::readEmailImportFile($path);
+            $result = (new EmailImport)->apply($rows, $overwrite, auth()->user());
+        } catch (EmailImportException $e) {
+            Notification::make()->title($e->getMessage())->danger()->send();
+
+            return null;
+        } finally {
+            Storage::disk('local')->delete($path);
+        }
+
+        $updated = count($result->toUpdate);
+        $unchanged = count($result->unchanged);
+        $skipped = count($result->skipped);
+
+        Log::info('Email import finished', [
+            'actor_id' => auth()->id(),
+            'updated' => $updated,
+            'unchanged' => $unchanged,
+            'skipped' => $skipped,
+        ]);
+
+        Notification::make()
+            ->title('นำเข้าอีเมลเรียบร้อยแล้ว')
+            ->body("อัปเดต {$updated} ผู้ใช้ / ไม่เปลี่ยนแปลง {$unchanged} / ข้าม {$skipped} แถว")
+            ->success()
+            ->send();
+
+        return $result;
     }
 
     protected static function canApprove(): bool
