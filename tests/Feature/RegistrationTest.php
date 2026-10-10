@@ -55,7 +55,10 @@ class RegistrationTest extends TestCase
 
     public function test_valid_registration_creates_pending_user_without_role_and_does_not_log_in(): void
     {
-        $this->submit()->assertHasNoFormErrors();
+        $this->submit()->assertHasNoFormErrors()->assertRedirect(Filament::getLoginUrl());
+
+        $titles = collect(session('filament.notifications', []))->pluck('title');
+        $this->assertTrue($titles->contains('สมัครสำเร็จ รอผู้ดูแลอนุมัติ'));
 
         $user = User::where('username', 'newcomer')->firstOrFail();
         $this->assertSame('pending', $user->status);
@@ -109,8 +112,13 @@ class RegistrationTest extends TestCase
 
     public function test_filled_honeypot_creates_no_user(): void
     {
-        $this->submit([], ['website' => 'http://spam.example']);
+        $before = User::count();
 
+        $this->submit([], ['website' => 'http://spam.example'])
+            ->assertHasNoFormErrors()
+            ->assertRedirect(Filament::getLoginUrl());
+
+        $this->assertSame($before, User::count());
         $this->assertSame(0, User::where('username', 'newcomer')->count());
     }
 
