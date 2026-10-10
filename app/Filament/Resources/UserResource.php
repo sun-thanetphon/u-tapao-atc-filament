@@ -76,6 +76,27 @@ class UserResource extends Resource
             ->rules([Rule::in(array_keys(static::approvableRoles()))]);
     }
 
+    /**
+     * ช่องอีเมล (ไม่บังคับ) ใช้ร่วมกับหน้าโปรไฟล์: ตัดช่องว่าง, ไม่ซ้ำกับผู้ใช้ที่ยังไม่ถูกลบ, ค่าว่างเก็บเป็น null
+     */
+    public static function emailField(): Forms\Components\TextInput
+    {
+        return Forms\Components\TextInput::make('email')
+            ->label('อีเมล')
+            ->email()
+            ->maxLength(255)
+            ->live(onBlur: true)
+            ->afterStateUpdated(fn($state, Forms\Set $set) => $set('email', is_string($state) ? trim($state) : $state))
+            ->unique(
+                table: 'users',
+                column: 'email',
+                ignoreRecord: true,
+                modifyRuleUsing: fn(\Illuminate\Validation\Rules\Unique $rule) => $rule->whereNull('deleted_at'),
+            )
+            ->dehydrateStateUsing(fn($state) => filled(trim((string) $state)) ? trim($state) : null)
+            ->dehydrated();
+    }
+
     protected static function canApprove(): bool
     {
         return (bool) auth()->user()?->can(PermissionEnum::USER_APPROVE);
@@ -200,6 +221,7 @@ class UserResource extends Resource
                         Forms\Components\TextInput::make('lastname')
                             ->required()
                             ->maxLength(255),
+                        static::emailField(),
                         Forms\Components\TextInput::make('password')
                             ->label(__('Password'))
                             ->password()
