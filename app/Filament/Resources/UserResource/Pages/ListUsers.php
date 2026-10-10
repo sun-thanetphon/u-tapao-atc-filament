@@ -102,7 +102,7 @@ class ListUsers extends ListRecords
             ->action(function (array $data) {
                 $file = is_array($data['file']) ? collect($data['file'])->first() : $data['file'];
 
-                UserResource::runEmailImport((string) $file, (bool) ($data['overwrite'] ?? false));
+                UserResource::runEmailImport(is_string($file) ? $file : '', (bool) ($data['overwrite'] ?? false));
             });
     }
 }

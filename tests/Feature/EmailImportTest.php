@@ -445,7 +445,12 @@ class EmailImportTest extends TestCase
         $component = Livewire::actingAs($viewer)->test(ListUsers::class);
 
         $component->assertActionHidden('importEmails');
+        Storage::disk('local')->put('email-imports/valid.csv', "username,email
+{$a->username},person1@example.test
+");
+
         $component->call('mountAction', 'importEmails')
+            ->set('mountedActionsData.0', ['file' => ['x' => 'email-imports/valid.csv'], 'overwrite' => false])
             ->call('callMountedAction');
 
         $this->assertNull($a->fresh()->email);
@@ -600,5 +605,89 @@ class EmailImportTest extends TestCase
 
         (new EmailImport)->apply($rows, true, $actor);
         $this->assertSame('case@example.test', $target->fresh()->email);
+    }
+
+    // ---------- CSV แบบ stream / path ----------
+
+    private function readCsvString(string $content): array
+    {
+        $path = tempnam(sys_get_temp_dir(), 'csv');
+        file_put_contents($path, $content);
+
+        try {
+            return (new EmailImport)->readFile($path, 'csv');
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    public function test_crafted_csv_with_thousands_of_blank_lines_is_rejected_not_fatal(): void
+    {
+        $content = "username,email\n" . str_repeat(',', 29) . "\n" . str_repeat("\n", 20000) . "a,b@example.test\n";
+
+        $this->expectException(EmailImportException::class);
+        $this->readCsvString($content);
+    }
+
+    public function test_crafted_csv_of_only_blank_lines_is_rejected_not_fatal(): void
+    {
+        $this->expectException(EmailImportException::class);
+        $this->readCsvString("username,email\n" . str_repeat("\n", 1_900_000));
+    }
+
+    public function test_crafted_csv_with_300_columns_is_handled(): void
+    {
+        $header = 'username,email,' . implode(',', array_map(fn($i) => "c{$i}", range(1, 298)));
+        $row = 'alice,alice@example.test,' . implode(',', array_fill(0, 298, 'x'));
+
+        $rows = $this->readCsvString("{$header}\n{$row}\n");
+
+        $this->assertSame([['row' => 2, 'username' => 'alice', 'email' => 'alice@example.test']], $rows);
+    }
+
+    public function test_csv_streaming_keeps_quoted_comma_and_thai_text(): void
+    {
+        $rows = $this->readCsvString("\xEF\xBB\xBF Email ,ชื่อ, USERNAME \n\"a@example.test\",\"สมชาย, ใจดี\", alice \n");
+
+        $this->assertSame([['row' => 2, 'username' => 'alice', 'email' => 'a@example.test']], $rows);
+    }
+
+    public function test_1000_row_csv_reads_and_1001_is_rejected_immediately(): void
+    {
+        $make = fn(int $n) => "username,email\n" . collect(range(1, $n))->map(fn($i) => "u{$i},u{$i}@example.test")->implode("\n") . "\n";
+
+        $this->assertCount(1000, $this->readCsvString($make(1000)));
+
+        $this->expectException(EmailImportException::class);
+        $this->readCsvString($make(1001));
+    }
+
+    public function test_path_with_trailing_newline_or_nested_array_gives_thai_error_and_deletes_nothing(): void
+    {
+        $a = $this->user();
+        $actor = $this->admin();
+        Storage::disk('local')->put('email-imports/x.csv', "username,email\n{$a->username},hack@example.test\n");
+
+        // ค่า nested array ถูก Filament ปฏิเสธเองในกฎของ FileUpload ก่อนถึงโค้ดนี้ จึงทดสอบที่ตัว handler โดยตรง
+        $this->actingAs($actor);
+        Livewire::actingAs($actor)->test(ListUsers::class)
+            ->callAction('importEmails', ['file' => ['x' => "email-imports/x.csv\n"], 'overwrite' => false]);
+
+        $titles = collect(session('filament.notifications', []))->pluck('title')->implode(' ');
+        $this->assertStringContainsString('ไม่พบไฟล์ที่อัปโหลด', $titles);
+
+        foreach (["email-imports/x.csv\n", ''] as $path) {
+            $this->assertNull(UserResource::runEmailImport($path, false));
+        }
+
+        try {
+            UserResource::readEmailImportFile(['x' => ['y' => 'email-imports/x.csv']]);
+            $this->fail('expected exception');
+        } catch (EmailImportException $e) {
+            $this->assertSame('ไม่พบไฟล์ที่อัปโหลด', $e->getMessage());
+        }
+
+        $this->assertTrue(Storage::disk('local')->exists('email-imports/x.csv'));
+        $this->assertNull($a->fresh()->email);
     }
 }

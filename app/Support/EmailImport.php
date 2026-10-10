@@ -30,6 +30,11 @@ class EmailImport
 
     public const READ_COLUMN_LIMIT = 30;
 
+    /** CSV: จำนวนแถวดิบสูงสุดที่ยอมสแกน และจำนวนแถวว่างติดกันสูงสุด */
+    public const CSV_MAX_LINES = 50000;
+
+    public const CSV_MAX_BLANK_RUN = 5000;
+
     /**
      * อ่านไฟล์เป็นแถวข้อมูล (row = เลขแถวในไฟล์ โดยหัวตารางคือแถว 1) ข้ามแถวว่างเปล่า
      *
@@ -49,6 +54,11 @@ class EmailImport
         $size = @filesize($path);
         if ($size === false || $size > self::MAX_BYTES) {
             throw new EmailImportException('ไฟล์ใหญ่เกิน 2 MB');
+        }
+
+        // CSV อ่านแบบ stream ทีละแถว เก็บเฉพาะ 2 คอลัมน์ที่ต้องใช้ จึงไม่กินหน่วยความจำตามขนาด/รูปทรงของไฟล์
+        if ($extension === 'csv') {
+            return $this->readCsv($path);
         }
 
         $import = new class($extension === 'csv' ? $this->sniffDelimiter($path) : ',', $extension !== 'csv') implements ToArray, WithCustomCsvSettings, WithLimit, WithReadFilter {
@@ -99,6 +109,74 @@ class EmailImport
         }
 
         return $this->parse($sheets[0] ?? [], $extension !== 'csv');
+    }
+
+    /**
+     * @return list<array{row:int,username:string,email:string}>
+     */
+    private function readCsv(string $path): array
+    {
+        $handle = @fopen($path, 'rb');
+        if (! $handle) {
+            throw new EmailImportException('อ่านไฟล์ไม่ได้ กรุณาตรวจสอบว่าไฟล์ไม่เสียหายและเป็นรูปแบบที่ถูกต้อง');
+        }
+
+        $tooMany = fn() => new EmailImportException('ไฟล์มีข้อมูลเกิน ' . number_format(self::MAX_ROWS) . ' แถว กรุณาแบ่งไฟล์');
+
+        try {
+            $delimiter = $this->sniffDelimiter($path);
+            $rows = [];
+            $line = 0;
+            $blankRun = 0;
+            $usernameCol = $emailCol = false;
+
+            while (($cells = fgetcsv($handle, 0, $delimiter, '"', '')) !== false) {
+                $line++;
+
+                if ($line > self::CSV_MAX_LINES) {
+                    throw $tooMany();
+                }
+
+                if ($line === 1) {
+                    $header = array_map(fn($cell) => mb_strtolower($this->cell($cell)), $cells);
+                    $usernameCol = array_search('username', $header, true);
+                    $emailCol = array_search('email', $header, true);
+
+                    if ($usernameCol === false || $emailCol === false) {
+                        throw new EmailImportException('ไม่พบคอลัมน์ username และ email ในแถวแรกของไฟล์');
+                    }
+
+                    continue;
+                }
+
+                $username = $this->cell($cells[$usernameCol] ?? null);
+                $email = $this->cell($cells[$emailCol] ?? null);
+
+                if ($username === '' && $email === '') {
+                    if (++$blankRun > self::CSV_MAX_BLANK_RUN) {
+                        throw $tooMany();
+                    }
+
+                    continue;
+                }
+
+                $blankRun = 0;
+
+                if (count($rows) >= self::MAX_ROWS) {
+                    throw $tooMany();
+                }
+
+                $rows[] = ['row' => $line, 'username' => $username, 'email' => $email];
+            }
+
+            if ($line === 0 || $usernameCol === false || $emailCol === false) {
+                throw new EmailImportException('ไม่พบคอลัมน์ username และ email ในแถวแรกของไฟล์');
+            }
+
+            return $rows;
+        } finally {
+            fclose($handle);
+        }
     }
 
     /**

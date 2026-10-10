@@ -115,8 +115,17 @@ class UserResource extends Resource
             return (new EmailImport)->readFile($file->getRealPath(), $file->getClientOriginalExtension());
         }
 
-        if (static::isStoredEmailImportPath($file) && Storage::disk('local')->exists($file)) {
-            return (new EmailImport)->readFile(Storage::disk('local')->path($file), pathinfo($file, PATHINFO_EXTENSION));
+        if (static::isStoredEmailImportPath($file)) {
+            try {
+                $exists = Storage::disk('local')->exists($file);
+                $fullPath = $exists ? Storage::disk('local')->path($file) : null;
+            } catch (\Throwable $e) {
+                $fullPath = null;
+            }
+
+            if ($fullPath !== null) {
+                return (new EmailImport)->readFile($fullPath, pathinfo($file, PATHINFO_EXTENSION));
+            }
         }
 
         throw new EmailImportException('ไม่พบไฟล์ที่อัปโหลด');
@@ -129,7 +138,7 @@ class UserResource extends Resource
     {
         return is_string($path)
             && ! str_contains($path, '..')
-            && preg_match('#^email-imports/[A-Za-z0-9._-]+\.(csv|xlsx|xls)$#i', $path) === 1;
+            && preg_match('#^email-imports/[A-Za-z0-9._-]+\.(csv|xlsx|xls)\z#i', $path) === 1;
     }
 
     /**
