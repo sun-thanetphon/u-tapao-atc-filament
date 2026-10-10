@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Concerns\ToArray;
 use Maatwebsite\Excel\Concerns\WithCustomCsvSettings;
+use Maatwebsite\Excel\Concerns\WithLimit;
+use Maatwebsite\Excel\Concerns\WithReadFilter;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Reader\IReadFilter;
 use Maatwebsite\Excel\Excel;
 
 /**
@@ -18,6 +22,13 @@ use Maatwebsite\Excel\Excel;
 class EmailImport
 {
     public const MAX_ROWS = 1000;
+
+    public const MAX_BYTES = 2 * 1024 * 1024;
+
+    /** จำนวนแถวดิบสูงสุดที่ยอมอ่าน (เผื่อแถวว่างคั่น) ถ้าถึงค่านี้ถือว่าไฟล์ใหญ่เกิน */
+    public const READ_ROW_LIMIT = 2 * self::MAX_ROWS + 2;
+
+    public const READ_COLUMN_LIMIT = 30;
 
     /**
      * อ่านไฟล์เป็นแถวข้อมูล (row = เลขแถวในไฟล์ โดยหัวตารางคือแถว 1) ข้ามแถวว่างเปล่า
@@ -34,13 +45,41 @@ class EmailImport
             default => throw new EmailImportException('รองรับเฉพาะไฟล์ .csv, .xlsx และ .xls'),
         };
 
-        $import = new class($extension === 'csv' ? $this->sniffDelimiter($path) : ',') implements ToArray, WithCustomCsvSettings {
-            public function __construct(private string $delimiter)
+        // ตรวจขนาดก่อนอ่านเสมอ (ขีดจำกัดของ Livewire ตอนอัปโหลดสูงกว่านี้มาก)
+        $size = @filesize($path);
+        if ($size === false || $size > self::MAX_BYTES) {
+            throw new EmailImportException('ไฟล์ใหญ่เกิน 2 MB');
+        }
+
+        $import = new class($extension === 'csv' ? $this->sniffDelimiter($path) : ',', $extension !== 'csv') implements ToArray, WithCustomCsvSettings, WithLimit, WithReadFilter {
+            // CSV ถูกจำกัดด้วยขนาดไฟล์ 2 MB อยู่แล้ว จำกัดแถว/คอลัมน์เฉพาะ Excel ที่ขยายตัวได้มาก
+            public function __construct(private string $delimiter, private bool $bounded)
             {
             }
 
             public function array(array $array): void
             {
+            }
+
+            public function limit(): int
+            {
+                return $this->bounded ? EmailImport::READ_ROW_LIMIT : PHP_INT_MAX;
+            }
+
+            // อ่านเฉพาะแถว/คอลัมน์ที่จำเป็น ไฟล์เล็กที่ขยายเป็นหลายล้านเซลล์จะได้ไม่กินหน่วยความจำ
+            public function readFilter(): IReadFilter
+            {
+                return new class($this->bounded) implements IReadFilter {
+                    public function __construct(private bool $bounded)
+                    {
+                    }
+
+                    public function readCell($columnAddress, $row, $worksheetName = ''): bool
+                    {
+                        return ! $this->bounded || $row <= EmailImport::READ_ROW_LIMIT
+                            && Coordinate::columnIndexFromString($columnAddress) <= EmailImport::READ_COLUMN_LIMIT;
+                    }
+                };
             }
 
             public function getCsvSettings(): array
@@ -59,16 +98,21 @@ class EmailImport
             throw new EmailImportException('อ่านไฟล์ไม่ได้ กรุณาตรวจสอบว่าไฟล์ไม่เสียหายและเป็นรูปแบบที่ถูกต้อง');
         }
 
-        return $this->parse($sheets[0] ?? []);
+        return $this->parse($sheets[0] ?? [], $extension !== 'csv');
     }
 
     /**
      * @param  array<int, array<int, mixed>>  $matrix  แถวดิบ (แถวแรกคือหัวตาราง)
      * @return list<array{row:int,username:string,email:string}>
      */
-    public function parse(array $matrix): array
+    public function parse(array $matrix, bool $bounded = false): array
     {
         $matrix = array_values($matrix);
+
+        // Excel ถูกตัดที่ READ_ROW_LIMIT แถว ถ้าถึงขีดนี้แสดงว่าไฟล์ยาวเกินและอาจถูกตัดท้าย จึงไม่ประมวลผล
+        if ($bounded && count($matrix) >= self::READ_ROW_LIMIT) {
+            throw new EmailImportException('ไฟล์มีข้อมูลเกิน ' . number_format(self::MAX_ROWS) . ' แถว กรุณาแบ่งไฟล์');
+        }
         $header = array_map(fn($cell) => mb_strtolower($this->cell($cell)), $matrix[0] ?? []);
 
         $usernameCol = array_search('username', $header, true);
@@ -128,7 +172,8 @@ class EmailImport
             }
         }
 
-        $owners = $this->emailOwners(array_keys($emailCount), $lock);
+        // อีเมลที่รับเข้ารายการอัปเดตแล้วในรอบนี้ (ใช้จับอีเมลที่ฐานข้อมูลมองว่าเท่ากัน เช่น jose/josé)
+        $accepted = [];
 
         foreach ($rows as $r) {
             $skip = function (string $reason) use ($r, $result) {
@@ -185,7 +230,7 @@ class EmailImport
                 continue;
             }
 
-            if (array_diff($owners[$emailKey] ?? [], [$user->id]) !== []) {
+            if ($this->usedByOtherUser($r['email'], $user->id, $lock) || $this->equalsAnyInDb($r['email'], $accepted)) {
                 $skip('อีเมลนี้ถูกใช้โดยผู้ใช้อื่น');
                 continue;
             }
@@ -195,6 +240,7 @@ class EmailImport
                 continue;
             }
 
+            $accepted[] = $r['email'];
             $result->toUpdate[] = $entry;
         }
 
@@ -212,10 +258,27 @@ class EmailImport
         return DB::transaction(function () use ($rows, $overwrite, $actor) {
             $result = $this->analyse($rows, $overwrite, $actor, lock: true);
 
-            foreach ($result->toUpdate as $entry) {
+            $toUpdate = $result->toUpdate;
+            $result->toUpdate = [];
+
+            foreach ($toUpdate as $entry) {
+                // เช็กกับฐานข้อมูลอีกครั้งก่อนบันทึกทุกแถว (ตาม collation จริง และเห็นแถวที่บันทึกไปแล้วใน transaction นี้)
+                if ($this->usedByOtherUser($entry['email'], $entry['user_id'], true)) {
+                    $result->skipped[] = [
+                        'row' => $entry['row'],
+                        'username' => $entry['username'],
+                        'email' => $entry['email'],
+                        'reason' => 'อีเมลนี้ถูกใช้โดยผู้ใช้อื่น',
+                    ];
+                    continue;
+                }
+
                 $user = User::query()->findOrFail($entry['user_id']);
                 $user->forceFill(['email' => $entry['email']])->save();
+                $result->toUpdate[] = $entry;
             }
+
+            usort($result->skipped, fn($a, $b) => $a['row'] <=> $b['row']);
 
             return $result;
         });
@@ -232,6 +295,7 @@ class EmailImport
 
         foreach (array_chunk($usernames, 500) as $chunk) {
             $query = User::query()->whereIn('username', $chunk);
+            // email ไม่มี index: lockForUpdate จะล็อกทั้งตาราง users ช่วงนี้ (ยอมรับได้ที่ขนาดนี้)
             $lock && $query->lockForUpdate();
 
             foreach ($query->get() as $user) {
@@ -243,25 +307,35 @@ class EmailImport
     }
 
     /**
-     * @param  list<string>  $emails  ตัวพิมพ์เล็ก
-     * @return array<string, list<int>> อีเมล (ตัวพิมพ์เล็ก) => id ผู้ใช้ที่ยังไม่ถูกลบซึ่งใช้อีเมลนั้นอยู่
+     * มีผู้ใช้อื่น (ที่ยังไม่ถูกลบ) ใช้อีเมลนี้อยู่หรือไม่ ตามการเทียบของฐานข้อมูลเอง (collation เช่น jose = josé)
+     * หมายเหตุ: คอลัมน์ email ไม่มี index การสแกนแบบ lockForUpdate จึงล็อกตาราง users ตลอดช่วงนั้น (ยอมรับได้ที่ขนาดนี้)
      */
-    private function emailOwners(array $emails, bool $lock): array
+    private function usedByOtherUser(string $email, int $userId, bool $lock): bool
     {
-        $owners = [];
+        $query = User::query()->where('email', $email)->whereKeyNot($userId);
+        $lock && $query->lockForUpdate();
 
+        return $query->exists();
+    }
+
+    /**
+     * อีเมลนี้เท่ากับอีเมลใดในรายการหรือไม่ ตาม collation ของฐานข้อมูล (ไม่แตะตาราง)
+     *
+     * @param  list<string>  $emails
+     */
+    private function equalsAnyInDb(string $email, array $emails): bool
+    {
         foreach (array_chunk($emails, 500) as $chunk) {
-            $query = User::query()->whereIn('email', $chunk);
-            $lock && $query->lockForUpdate();
+            $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+            $row = DB::selectOne("select ? in ({$placeholders}) as hit", [$email, ...$chunk]);
 
-            foreach ($query->get(['id', 'email']) as $user) {
-                $owners[mb_strtolower(trim($user->email))][] = $user->id;
+            if ($row && (int) $row->hit === 1) {
+                return true;
             }
         }
 
-        return $owners;
+        return false;
     }
-
     private function validFormat(string $email): bool
     {
         return Validator::make(['email' => $email], ['email' => ['email', 'max:255']])->passes();

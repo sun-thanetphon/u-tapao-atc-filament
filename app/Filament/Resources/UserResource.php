@@ -115,11 +115,21 @@ class UserResource extends Resource
             return (new EmailImport)->readFile($file->getRealPath(), $file->getClientOriginalExtension());
         }
 
-        if (is_string($file) && Storage::disk('local')->exists($file)) {
+        if (static::isStoredEmailImportPath($file) && Storage::disk('local')->exists($file)) {
             return (new EmailImport)->readFile(Storage::disk('local')->path($file), pathinfo($file, PATHINFO_EXTENSION));
         }
 
         throw new EmailImportException('ไม่พบไฟล์ที่อัปโหลด');
+    }
+
+    /**
+     * path ที่รับได้ต้องเป็นไฟล์ที่ action นี้เก็บเองใน email-imports/ เท่านั้น (ค่าจาก Livewire แก้ได้จากฝั่งผู้ใช้)
+     */
+    public static function isStoredEmailImportPath(mixed $path): bool
+    {
+        return is_string($path)
+            && ! str_contains($path, '..')
+            && preg_match('#^email-imports/[A-Za-z0-9._-]+\.(csv|xlsx|xls)$#i', $path) === 1;
     }
 
     /**
@@ -129,6 +139,11 @@ class UserResource extends Resource
     {
         $result = null;
         $error = null;
+
+        // ยังไม่มีไฟล์ (เช่นยังอยู่ขั้นแรก) ไม่ต้องอ่านหรือแจ้งอะไร
+        if (blank($file)) {
+            return view('filament.resources.user-resource.email-import-preview', ['result' => null, 'error' => null]);
+        }
 
         try {
             $result = (new EmailImport)->analyse(static::readEmailImportFile($file), $overwrite, auth()->user());
@@ -145,6 +160,13 @@ class UserResource extends Resource
     public static function runEmailImport(string $path, bool $overwrite): ?EmailImportResult
     {
         abort_unless(auth()->user()?->can(PermissionEnum::USER_EDIT), 403);
+
+        // ลบเฉพาะไฟล์ที่ผ่านการตรวจ path แล้วเท่านั้น ไม่เช่นนั้นห้ามแตะไฟล์ใดเลย
+        if (! static::isStoredEmailImportPath($path)) {
+            Notification::make()->title('ไม่พบไฟล์ที่อัปโหลด')->danger()->send();
+
+            return null;
+        }
 
         try {
             $rows = static::readEmailImportFile($path);

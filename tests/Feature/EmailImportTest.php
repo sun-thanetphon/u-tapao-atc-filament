@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\PermissionEnum;
 use App\Enums\RoleEnum;
 use App\Enums\UserStatus;
+use App\Filament\Resources\UserResource;
 use App\Filament\Resources\UserResource\Pages\ListUsers;
 use App\Models\User;
 use App\Support\EmailImport;
@@ -465,5 +466,139 @@ class EmailImportTest extends TestCase
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
             $this->assertSame(403, $e->getStatusCode());
         }
+    }
+
+
+    // ---------- ความปลอดภัย / ความแข็งแรง ----------
+
+    public function test_tampered_path_is_rejected_and_nothing_is_deleted(): void
+    {
+        $a = $this->user();
+        $actor = $this->admin();
+        Storage::disk('local')->put('documents/a.pdf', 'pdf-bytes');
+        Storage::disk('local')->put('documents/other.csv', "username,email\n{$a->username},hack@example.test\n");
+
+        foreach (['documents/a.pdf', 'email-imports/../documents/a.pdf', 'documents/other.csv', 'email-imports/../documents/other.csv'] as $path) {
+            Livewire::actingAs($actor)->test(ListUsers::class)
+                ->callAction('importEmails', ['file' => ['x' => $path], 'overwrite' => false]);
+
+            $titles = collect(session('filament.notifications', []))->pluck('title')->implode(' ');
+            $this->assertStringContainsString('ไม่พบไฟล์ที่อัปโหลด', $titles, $path);
+            session()->forget('filament.notifications');
+        }
+
+        $this->assertTrue(Storage::disk('local')->exists('documents/a.pdf'));
+        $this->assertTrue(Storage::disk('local')->exists('documents/other.csv'));
+        $this->assertNull($a->fresh()->email);
+    }
+
+    public function test_preview_does_not_read_tampered_path(): void
+    {
+        $actor = $this->admin();
+        Storage::disk('local')->put('documents/other.csv', "username,email\nzzz,hack@example.test\n");
+        $this->actingAs($actor);
+
+        $html = UserResource::emailImportPreview(['x' => 'documents/other.csv'], false)->render();
+
+        $this->assertStringContainsString('ไม่พบไฟล์ที่อัปโหลด', $html);
+    }
+
+    public function test_file_over_2mb_is_rejected_before_parsing(): void
+    {
+        $file = $this->csv("username,email
+" . str_repeat('a', 3 * 1024 * 1024));
+
+        try {
+            (new EmailImport)->readFile($file->getRealPath(), 'csv');
+            $this->fail('expected exception');
+        } catch (EmailImportException $e) {
+            $this->assertStringContainsString('2 MB', $e->getMessage());
+        }
+    }
+
+    public function test_xlsx_with_too_many_rows_is_rejected(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'imp') . '.xlsx';
+        $book = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
+        $rows = [['username', 'email']];
+        for ($i = 1; $i <= 2100; $i++) {
+            $rows[] = ["u{$i}", "u{$i}@example.test"];
+        }
+        $book->getActiveSheet()->fromArray($rows);
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book))->save($path);
+
+        try {
+            (new EmailImport)->readFile($path, 'xlsx');
+            $this->fail('expected exception');
+        } catch (EmailImportException $e) {
+            $this->assertStringContainsString('เกิน', $e->getMessage());
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    public function test_preview_without_file_returns_empty_without_error(): void
+    {
+        $this->actingAs($this->admin());
+
+        $html = UserResource::emailImportPreview(null, false)->render();
+
+        $this->assertStringNotContainsString('ไม่พบไฟล์', $html);
+    }
+
+    public function test_too_many_rows_with_blank_lines_still_rejected(): void
+    {
+        $body = "username,email\n" . str_repeat("\n", 5000) . collect(range(1, 1001))->map(fn($i) => "u{$i},u{$i}@example.test")->implode("\n") . "\n";
+        $file = $this->csv($body);
+
+        $this->expectException(EmailImportException::class);
+        (new EmailImport)->readFile($file->getRealPath(), 'csv');
+    }
+
+    public function test_collation_lookalike_of_another_users_email_is_skipped(): void
+    {
+        $this->user('jose@example.test');
+        $target = $this->user();
+        $actor = $this->admin();
+
+        $result = (new EmailImport)->apply([$this->row(2, $target->username, 'josé@example.test')], false, $actor);
+
+        $this->assertSame('อีเมลนี้ถูกใช้โดยผู้ใช้อื่น', $result->skipped[0]['reason']);
+        $this->assertCount(0, $result->toUpdate);
+        $this->assertNull($target->fresh()->email);
+    }
+
+    public function test_collation_equal_emails_in_one_file_save_at_most_one(): void
+    {
+        $a = $this->user();
+        $b = $this->user();
+        $actor = $this->admin();
+        $rows = [
+            $this->row(2, $a->username, 'jose@example.test'),
+            $this->row(3, $b->username, 'josé@example.test'),
+        ];
+
+        $preview = (new EmailImport)->analyse($rows, false, $actor);
+        $result = (new EmailImport)->apply($rows, false, $actor);
+
+        $this->assertCount(1, $preview->toUpdate, 'ตัวอย่างต้องตรงกับผลจริง');
+        $this->assertCount(1, $result->toUpdate);
+        $this->assertCount(1, $result->skipped);
+        $this->assertSame('jose@example.test', $a->fresh()->email);
+        $this->assertNull($b->fresh()->email);
+    }
+
+    public function test_case_only_difference_needs_overwrite(): void
+    {
+        $target = $this->user('Case@example.test');
+        $actor = $this->admin();
+        $rows = [$this->row(2, $target->username, 'case@example.test')];
+
+        $off = (new EmailImport)->apply($rows, false, $actor);
+        $this->assertSame('มีอีเมลอยู่แล้ว', $off->skipped[0]['reason']);
+        $this->assertSame('Case@example.test', $target->fresh()->email);
+
+        (new EmailImport)->apply($rows, true, $actor);
+        $this->assertSame('case@example.test', $target->fresh()->email);
     }
 }
