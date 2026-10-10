@@ -59,7 +59,8 @@ class CustomRequestPasswordReset extends RequestPasswordReset
     }
 
     /**
-     * ส่งลิงก์เฉพาะบัญชีที่มีอยู่และอนุมัติแล้ว ไม่ว่าจะเกิดอะไรขึ้นก็ไม่โยนข้อผิดพลาดออกไป
+     * ตั้งงานส่งลิงก์ไว้ทำหลังตอบกลับ เพื่อให้เวลาตอบเท่ากันทุกกรณี (ไม่เปิดเผยว่ามีบัญชีหรือไม่)
+     * ฮอสต์ไม่มี queue worker จึงใช้ terminating callback แทนคิว
      */
     protected function sendResetLinkIfEligible(string $email): void
     {
@@ -67,14 +68,24 @@ class CustomRequestPasswordReset extends RequestPasswordReset
             return;
         }
 
-        // SoftDeletes scope ตัดบัญชีที่ถูกลบออกให้แล้ว
-        $user = User::query()->where('email', $email)->first();
+        app()->terminating(fn () => $this->deliverResetLink($email));
+    }
 
-        if (! $user || ! $user->isActive()) {
-            return;
-        }
+    /**
+     * ส่งลิงก์เฉพาะบัญชีที่มีอยู่และอนุมัติแล้ว ไม่ว่าจะเกิดอะไรขึ้นก็ไม่โยนข้อผิดพลาดออกไป
+     */
+    protected function deliverResetLink(string $email): void
+    {
+        $user = null;
 
         try {
+            // SoftDeletes scope ตัดบัญชีที่ถูกลบออกให้แล้ว
+            $user = User::query()->where('email', $email)->first();
+
+            if (! $user || ! $user->isActive()) {
+                return;
+            }
+
             Password::broker(Filament::getAuthPasswordBroker())->sendResetLink(
                 ['email' => $email],
                 function (CanResetPassword $user, string $token): void {
@@ -85,12 +96,12 @@ class CustomRequestPasswordReset extends RequestPasswordReset
                     $notification = app(ResetPasswordNotification::class, ['token' => $token]);
                     $notification->url = Filament::getResetPasswordUrl($token, $user);
 
-                    $user->notify($notification);
+                    $user->notifyNow($notification);
                 },
             );
         } catch (Throwable $e) {
-            Log::warning('Failed to send password reset link', [
-                'user_id' => $user->id,
+            Log::error('Failed to send password reset link', [
+                'user_id' => $user?->id,
                 'error' => $e->getMessage(),
             ]);
         }

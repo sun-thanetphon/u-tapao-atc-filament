@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\Events\NotificationSending;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Illuminate\Support\Facades\Password;
@@ -61,6 +62,14 @@ class PasswordResetEmailTest extends TestCase
             ->call('request');
     }
 
+    /**
+     * ผลลัพธ์ที่ผู้ขอเห็นออกมาก่อน แล้วค่อยรันงานที่ค้างไว้หลังตอบกลับ
+     */
+    protected function deliverDeferred(): void
+    {
+        app()->terminate();
+    }
+
     protected function doReset(string $email, string $token, string $password = 'brand-new-pass')
     {
         return Livewire::test(CustomResetPassword::class, ['email' => $email, 'token' => $token])
@@ -74,6 +83,7 @@ class PasswordResetEmailTest extends TestCase
         $user = $this->userWithEmail();
 
         $this->requestReset('person@example.com')->assertHasNoFormErrors();
+        $this->deliverDeferred();
 
         NotificationFacade::assertSentToTimes($user, ResetPasswordNotification::class, 1);
         $this->assertSame([self::NEUTRAL], $this->titles());
@@ -85,6 +95,7 @@ class PasswordResetEmailTest extends TestCase
         $this->userWithEmail();
 
         $this->requestReset('nobody@example.com')->assertHasNoFormErrors();
+        $this->deliverDeferred();
 
         NotificationFacade::assertNothingSent();
         $this->assertSame([self::NEUTRAL], $this->titles());
@@ -101,6 +112,7 @@ class PasswordResetEmailTest extends TestCase
             session()->forget('filament.notifications');
             $this->requestReset($email)->assertHasNoFormErrors();
             $this->assertSame([self::NEUTRAL], $this->titles(), $email);
+            $this->deliverDeferred();
             RateLimiter::clear($this->requestLimiterKey());
         }
 
@@ -108,14 +120,34 @@ class PasswordResetEmailTest extends TestCase
         $this->assertSame(0, DB::table('password_reset_tokens')->count());
     }
 
-    public function test_mail_failure_is_swallowed_and_shows_same_message(): void
+    public function test_mail_failure_is_logged_and_shows_same_message(): void
     {
-        $this->userWithEmail();
+        $user = $this->userWithEmail();
+        Log::spy();
         Event::listen(NotificationSending::class, fn () => throw new \RuntimeException('smtp down'));
 
         $this->requestReset('person@example.com')->assertHasNoFormErrors();
-
         $this->assertSame([self::NEUTRAL], $this->titles());
+
+        $this->deliverDeferred();
+
+        Log::shouldHaveReceived('error')->once()->withArgs(fn ($message, $context) => $message === 'Failed to send password reset link'
+            && $context['user_id'] === $user->id
+            && $context['error'] === 'smtp down');
+    }
+
+    public function test_reset_mail_is_sent_synchronously_even_with_database_queue(): void
+    {
+        config(['queue.default' => 'database']);
+        $user = $this->userWithEmail();
+
+        $this->requestReset('person@example.com')->assertHasNoFormErrors();
+        $this->deliverDeferred();
+
+        $this->assertSame(0, DB::table('jobs')->count(), 'reset mail must not be queued (no worker on host)');
+        $messages = app('mailer')->getSymfonyTransport()->messages();
+        $this->assertCount(1, $messages);
+        $this->assertSame($user->email, $messages[0]->getEnvelope()->getRecipients()[0]->getAddress());
     }
 
     public function test_link_works_once(): void
@@ -199,6 +231,7 @@ class PasswordResetEmailTest extends TestCase
     {
         NotificationFacade::fake();
         $user = $this->userWithEmail();
+        $second = $this->userWithEmail(UserStatus::ACTIVE, 'second@example.com');
 
         for ($i = 0; $i < 3; $i++) {
             $this->requestReset('person@example.com');
@@ -208,11 +241,14 @@ class PasswordResetEmailTest extends TestCase
         $this->assertGreaterThan(60, RateLimiter::availableIn($this->requestLimiterKey()));
 
         session()->forget('filament.notifications');
-        $this->requestReset('person@example.com');
+        $this->requestReset('second@example.com');
 
         $this->assertNotContains(self::NEUTRAL, $this->titles());
         $this->assertNotEmpty($this->titles());
-        // ไม่มีการเรียก broker เพิ่ม: ยังได้เมลเพียงฉบับเดียวจากคำขอแรก
+        $this->deliverDeferred();
+        // คำขอที่ 4 ไม่ถูกประมวลผลเลย: ผู้ใช้คนที่สองไม่ได้เมลและไม่มีโทเคน
+        NotificationFacade::assertNotSentTo($second, ResetPasswordNotification::class);
+        $this->assertSame(0, DB::table('password_reset_tokens')->where('email', 'second@example.com')->count());
         NotificationFacade::assertSentToTimes($user, ResetPasswordNotification::class, 1);
     }
 
