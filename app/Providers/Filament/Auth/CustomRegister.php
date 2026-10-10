@@ -92,6 +92,7 @@ class CustomRegister extends Register
     {
         try {
             User::query()
+                ->active()
                 ->whereNotNull('email')
                 ->where('email', '!=', '')
                 ->get()

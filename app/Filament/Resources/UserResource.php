@@ -127,6 +127,7 @@ class UserResource extends Resource
                         'status' => UserStatus::ACTIVE,
                         'approved_by' => auth()->id(),
                         'approved_at' => now(),
+                        'rejected_reason' => null,
                     ]);
 
                 if ($affected === 0) {
@@ -269,6 +270,10 @@ class UserResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('lastname')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('email')
+                    ->label('อีเมล')
+                    ->searchable()
+                    ->placeholder('-'),
                 Tables\Columns\TagsColumn::make('roles.name')
                     ->sortable()
                     ->extraAttributes([
@@ -284,7 +289,8 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->label('วันที่สมัคร')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()

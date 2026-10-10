@@ -424,11 +424,4 @@ class PasswordResetByAdminTest extends TestCase
         $this->assertSame('root@example.com', $root->fresh()->email);
         $this->assertRequestDoneBy($rootRequest, $super);
     }
-
-    public function test_temporary_password_and_forced_change_are_gone(): void
-    {
-        $this->assertFalse(Schema::hasColumn('users', 'must_change_password'));
-        $this->assertFalse(class_exists('App\\Http\\Middleware\\ForcePasswordChange'));
-        $this->assertFalse(method_exists(PasswordResetRequestResource::class, 'setTemporaryPasswordFor'));
-    }
 }

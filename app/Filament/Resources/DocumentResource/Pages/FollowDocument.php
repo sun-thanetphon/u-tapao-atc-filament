@@ -60,7 +60,7 @@ class FollowDocument extends Page implements HasTable
     {
         return $table
             ->query(function () {
-                return User::query()->whereIn('section_id', $this->record->acknowledge_sections);
+                return User::query()->active()->whereIn('section_id', $this->record->acknowledge_sections);
             })
             ->headerActions([
                 Action::make('export')

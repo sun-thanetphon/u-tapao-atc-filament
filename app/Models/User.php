@@ -110,6 +110,11 @@ class User extends Authenticatable implements FilamentUser, HasName
         return $this->status === UserStatus::ACTIVE;
     }
 
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('status', UserStatus::ACTIVE);
+    }
+
     public function scopeStatus(Builder $query, string $status): Builder
     {
         return $query->where('status', $status);

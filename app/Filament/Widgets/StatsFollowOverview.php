@@ -16,7 +16,7 @@ class StatsFollowOverview extends BaseWidget
 
     protected function getStats(): array
     {
-        $countUsersInSections = User::whereIn('section_id', $this->sections)->count();
+        $countUsersInSections = User::active()->whereIn('section_id', $this->sections)->count();
         $countAcknowledgeInThisDocId =  DocumentAcknowledge::where('document_id', $this->documentId)->count();
         $percent = $countUsersInSections > 0 ? ($countAcknowledgeInThisDocId / $countUsersInSections * 100) : 0;
         return [

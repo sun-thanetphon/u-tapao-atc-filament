@@ -56,6 +56,7 @@ class ApprovalTest extends TestCase
         foreach ([[RoleEnum::ADMIN, RoleEnum::USER], [RoleEnum::SUPERADMIN, RoleEnum::ADMIN]] as [$actorRole, $chosen]) {
             $actor = $this->actingAdmin($actorRole);
             $pending = $this->makeWithStatus(UserStatus::PENDING);
+            $pending->forceFill(['rejected_reason' => 'เหตุผลเก่า'])->save();
 
             Livewire::test(ListUsers::class)
                 ->set('activeTab', 'pending')
@@ -64,6 +65,7 @@ class ApprovalTest extends TestCase
 
             $pending->refresh();
             $this->assertSame(UserStatus::ACTIVE, $pending->status);
+            $this->assertNull($pending->rejected_reason);
             $this->assertSame($actor->id, (int) $pending->approved_by);
             $this->assertNotNull($pending->approved_at);
             $this->assertSame([$chosen], $pending->getRoleNames()->all());
@@ -214,6 +216,20 @@ class ApprovalTest extends TestCase
         $this->assertNotNull($pending->approved_at);
         $this->assertCount(0, $pending->roles);
         Mail::assertSent(RegistrationRejectedMail::class, fn ($m) => $m->hasTo('person@example.com') && $m->reason === 'ไม่ใช่บุคลากร');
+    }
+
+    public function test_pending_tab_shows_applicant_email_and_registration_date(): void
+    {
+        $this->actingAdmin();
+        $pending = $this->makeWithStatus(UserStatus::PENDING, 'applicant@example.com');
+
+        Livewire::test(ListUsers::class)
+            ->set('activeTab', 'pending')
+            ->assertTableColumnExists('email')
+            ->assertCanRenderTableColumn('email')
+            ->assertCanRenderTableColumn('created_at')
+            ->assertTableColumnStateSet('email', 'applicant@example.com', $pending)
+            ->assertSee('applicant@example.com');
     }
 
     public function test_reopen_moves_rejected_back_to_pending(): void

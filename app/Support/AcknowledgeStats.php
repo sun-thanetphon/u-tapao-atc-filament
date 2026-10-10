@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\UserStatus;
 use App\Models\Document;
 use App\Models\DocumentAcknowledge;
 use App\Models\Section;
@@ -35,6 +36,7 @@ class AcknowledgeStats
     private function __construct()
     {
         $usersPerSection = User::query()
+            ->active()
             ->selectRaw('section_id, count(*) as total')
             ->groupBy('section_id')
             ->pluck('total', 'section_id');
@@ -49,6 +51,7 @@ class AcknowledgeStats
         $acknowledges = DocumentAcknowledge::query()
             ->join('users', 'users.id', '=', 'document_acknowledges.user_id')
             ->whereNull('users.deleted_at')
+            ->where('users.status', UserStatus::ACTIVE)
             ->whereIn('document_acknowledges.document_id', $documents->pluck('id'))
             ->selectRaw('document_acknowledges.document_id, users.section_id, count(*) as total')
             ->groupBy('document_acknowledges.document_id', 'users.section_id')

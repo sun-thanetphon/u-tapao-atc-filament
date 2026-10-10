@@ -44,7 +44,7 @@ class UserStatusTest extends TestCase
 
         $user->forceFill(['status' => 'rejected'])->save();
 
-        $this->assertNotSame(200, $this->actingAs($user->fresh())->get('/admin')->getStatusCode());
+        $this->actingAs($user->fresh())->get('/admin')->assertForbidden();
     }
 
     public function test_status_and_approval_columns_are_not_mass_assignable(): void

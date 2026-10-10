@@ -27,7 +27,7 @@ class AcknowledgeOverview extends Widget
             'required' => $stats->required(),
             'published' => Document::query()->where('publish', true)->count(),
             'pending' => $stats->pending()->count(),
-            'users' => User::query()->count(),
+            'users' => User::query()->active()->count(),
         ];
     }
 }
