@@ -26,6 +26,7 @@ class RolePermissionSeeder extends Seeder
         Permission::create(['name' => PermissionEnum::USER_ADD]);
         Permission::create(['name' => PermissionEnum::USER_EDIT]);
         Permission::create(['name' => PermissionEnum::USER_DELETE]);
+        Permission::findOrCreate(PermissionEnum::USER_APPROVE, 'web');
 
         // สำหรับเมนู Document
         Permission::create(['name' => PermissionEnum::DOCUMENT_VIEW]);
@@ -56,6 +57,7 @@ class RolePermissionSeeder extends Seeder
             PermissionEnum::USER_ADD,
             PermissionEnum::USER_EDIT,
             PermissionEnum::USER_DELETE,
+            PermissionEnum::USER_APPROVE,
 
             PermissionEnum::DOCUMENT_VIEW,
             PermissionEnum::DOCUMENT_ADD,
