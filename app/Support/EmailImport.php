@@ -53,6 +53,9 @@ class EmailImport
             // ส่งเป็น UploadedFile (โหมดทดสอบ) เพื่อให้อ่านจาก path จริงโดยไม่ผ่าน disk
             $sheets = app('excel')->toArray($import, new UploadedFile($path, 'import.' . $extension, null, null, true), null, $type);
         } catch (\Throwable $e) {
+            // บันทึกเฉพาะชนิดและข้อความของข้อผิดพลาด (ไม่บันทึกข้อมูลในไฟล์) เพื่อให้ตามสาเหตุได้
+            \Illuminate\Support\Facades\Log::warning('Email import: cannot read file', ['error' => get_class($e) . ': ' . $e->getMessage()]);
+
             throw new EmailImportException('อ่านไฟล์ไม่ได้ กรุณาตรวจสอบว่าไฟล์ไม่เสียหายและเป็นรูปแบบที่ถูกต้อง');
         }
 
