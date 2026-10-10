@@ -16,7 +16,7 @@
 - Production is shared hosting: no `npm run build`, no queue worker. Send mail synchronously. Do not add front-end build steps; any styling goes in `resources/css/filament-theme.css` (plain CSS, inlined by `AdminPanelProvider`).
 - Run tests inside Docker: `docker compose exec app php artisan test --filter=<Name>`. `tests/TestCase.php` refuses databases not ending in `_test`.
 - Migrations must never delete or rewrite existing user data. Existing users become `status = active`.
-- `status`, `approved_by`, `approved_at`, `rejected_reason`, `must_change_password` must NOT be in `User::$fillable`. `email` is added to `$fillable`.
+- `status`, `approved_by`, `approved_at`, `rejected_reason` must NOT be in `User::$fillable`. `email` is added to `$fillable`.
 - `username` and `email` uniqueness is enforced in code ignoring soft-deleted rows: `Rule::unique('users', col)->whereNull('deleted_at')`. No DB unique index (SoftDeletes).
 - Password minimum 8 characters. Role at approval: only `RoleEnum::USER` or `RoleEnum::ADMIN`, never `RoleEnum::SUPERADMIN`.
 - Rate limit 3 attempts per hour (register: per IP; reset request: per IP).
@@ -32,7 +32,7 @@
 - An already logged-in user whose status becomes `rejected` (or whose role is removed): next panel request must be denied, not served from the live session. Pinned in Task 1.
 - Approving or notifying a user who has no email (all legacy users): must succeed with no mail and no error. Pinned in Task 4.
 - Password-reset request for a soft-deleted or non-active account, or an email shared with nobody: same response, no mail sent. Pinned in Task 5 and Task 6.
-- A user holding a temporary password opening any other panel URL directly: must be redirected to the change-password page, and logout must still work. Pinned in Task 6.
+- Admin sending a reset link for a user who has no email: the email must be saved and the link sent in one transaction; a send failure leaves the email unsaved and the request open. Pinned in Task 6.
 
 ---
 
@@ -54,8 +54,7 @@
 | `app/Providers/Filament/Auth/CustomResetPassword.php` (new) | set new password from link, kill old sessions |
 | `app/Filament/Resources/UserResource.php` + `UserResource/Pages/ListUsers.php` (modify) | tabs, badge, approve/reject actions, email field |
 | `app/Filament/Resources/PasswordResetRequestResource.php` (+ `Pages/ListPasswordResetRequests.php`) (new) | admin handles reset requests |
-| `app/Http/Middleware/ForcePasswordChange.php` (new) | redirect when `must_change_password` |
-| `app/Providers/Filament/Profile/ProfileEditCustom.php` (modify) | email field, clear `must_change_password` on save |
+| `app/Providers/Filament/Profile/ProfileEditCustom.php` (modify) | email field |
 | `app/Providers/Filament/AdminPanelProvider.php` (modify) | register pages, middleware, login/register links |
 | `app/Enums/PermissionEnum.php`, `database/seeders/RolePermissionSeeder.php` (modify) | `USER_APPROVE` |
 | `tests/Feature/Registration*.php`, `Approval*.php`, `PasswordReset*.php` (new) | tests per task |
@@ -70,7 +69,7 @@
 - Test: `tests/Feature/UserStatusTest.php`
 
 **Interfaces:**
-- Produces: `UserStatus::PENDING|ACTIVE|REJECTED` (string consts `'pending'|'active'|'rejected'`); `User::isActive(): bool`; `User::scopeStatus(Builder $q, string $status)`; `canAccessPanel` now also requires `isActive()`; `users` columns `email` (nullable), `status` (default `active`), `approved_by`, `approved_at`, `rejected_reason`, `must_change_password` (bool default false).
+- Produces: `UserStatus::PENDING|ACTIVE|REJECTED` (string consts `'pending'|'active'|'rejected'`); `User::isActive(): bool`; `User::scopeStatus(Builder $q, string $status)`; `canAccessPanel` now also requires `isActive()`; `users` columns `email` (nullable), `status` (default `active`), `approved_by`, `approved_at`, `rejected_reason`.
 
 - [ ] **Step 1: Write failing tests** in `UserStatusTest` (use `RefreshDatabase`, `seedReferenceData()` in `setUp`, `Filament::setCurrentPanel(Filament::getPanel('admin'))`):
   - `test_new_users_default_to_active` — `makeUser(...)->fresh()->status === 'active'`.
@@ -78,7 +77,7 @@
   - `test_rejected_active_session_is_denied_on_next_request` — `actingAs($user)->get('/admin')` returns 200; then `forceFill(['status'=>'rejected'])->save()`; second `get('/admin')` is not 200 (redirect to login or 403).
   - `test_status_and_approval_columns_are_not_mass_assignable` — `User::create([... , 'status' => 'pending'])` yields `status === 'active'`.
 - [ ] **Step 2: Run** `docker compose exec app php artisan test --filter=UserStatusTest` — expect FAIL (unknown column/constant).
-- [ ] **Step 3: Implement** the enum, migration and `User` changes. Migration: before altering, abort with an exception listing duplicate usernames (case-insensitive, `deleted_at IS NULL`) if any exist; add columns; backfill is unnecessary because default is `active`. In `User`: add `email` to `$fillable`, cast `approved_at` to datetime and `must_change_password` to boolean, `canAccessPanel` = `isActive() && hasRole([...])`.
+- [ ] **Step 3: Implement** the enum, migration and `User` changes. Migration: before altering, abort with an exception listing duplicate usernames (case-insensitive, `deleted_at IS NULL`) if any exist; add columns; backfill is unnecessary because default is `active`. In `User`: add `email` to `$fillable`, cast `approved_at` to datetime, `canAccessPanel` = `isActive() && hasRole([...])`.
 - [ ] **Step 4: Run** the test class and the full suite (`php artisan test`) — expect PASS, no regressions.
 - [ ] **Step 5: Commit** `feat: add user status columns and gate panel access on status`.
 
@@ -175,31 +174,33 @@
 - [ ] **Step 4: Run** the class and full suite — expect PASS.
 - [ ] **Step 5: Commit** `feat: add password reset by email`.
 
-### Task 6: Admin-assisted reset and forced password change
+### Task 6: Admin-assisted reset (admin adds email for legacy accounts)
+
+> Redesigned 2026-10-10 by the project owner: no temporary password and no forced password change. The admin fills in the user's email when the account has none, then sends the reset link.
 
 **Files:**
-- Create: migration `..._create_password_reset_requests_table.php`, `app/Models/PasswordResetRequest.php`, `app/Filament/Resources/PasswordResetRequestResource.php` (+ `Pages/ListPasswordResetRequests.php`), `app/Http/Middleware/ForcePasswordChange.php`
-- Modify: `CustomRequestPasswordReset.php` (second action), `AdminPanelProvider.php` (`authMiddleware` + resource registration is automatic via discovery), `ProfileEditCustom.php`
+- Create: migration `..._create_password_reset_requests_table.php`, `app/Models/PasswordResetRequest.php`, `app/Filament/Resources/PasswordResetRequestResource.php` (+ `Pages/ListPasswordResetRequests.php`), `app/Support/PasswordResetLink.php`
+- Modify: `CustomRequestPasswordReset.php` (second form keyed `username`)
 - Test: `tests/Feature/PasswordResetByAdminTest.php`
 
 **Interfaces:**
 - Consumes: Tasks 1, 2, 5.
-- Produces: `PasswordResetRequest` (`user_id`, `status` `open|done`, `handled_by`, `handled_at`; `belongsTo(User)`); request form key `username`; resource actions `sendLink` and `setTemporaryPassword` (shows generated password once); `ForcePasswordChange::handle($request, Closure $next)` redirecting to the profile route when `must_change_password` is true, except for the profile route and logout.
+- Produces: `PasswordResetRequest` (`user_id`, `status` `open|done`, `handled_by`, `handled_at`; `belongsTo(User)`); request form key `username`; resource action `sendLink` (modal form shows a required `email` field only when the user has no email).
 
 - [ ] **Step 1: Write failing tests:**
   - `test_request_by_username_creates_one_open_request_and_repeat_reuses_it`.
   - `test_unknown_or_non_active_username_gets_same_response_and_creates_nothing`.
   - `test_fourth_request_is_rate_limited`.
-  - `test_admin_sets_temporary_password` — password changes, `must_change_password` true, request `done` with `handled_by`/`handled_at`, the generated password is shown in the action result once and never appears in `storage/logs` (assert log file does not contain it).
-  - `test_admin_can_send_link_only_if_user_has_email`.
+  - `test_admin_adds_email_for_user_without_email_and_link_is_sent` — email saved, token row exists, one message sent, `jobs` empty with `queue.default=database`, request `done` with `handled_by`/`handled_at`.
+  - `test_duplicate_or_invalid_email_is_rejected_and_nothing_changes`.
+  - `test_existing_email_is_used_and_a_tampered_email_argument_is_ignored`.
+  - `test_send_failure_rolls_back_email_and_leaves_request_open`.
   - `test_plain_user_cannot_see_or_open_the_resource` and badge visible only to `user.approve` holders.
-  - `test_admin_cannot_reset_super_admin_id_1` (`id == 1` action hidden/forbidden for non-super-admin).
-  - `test_temp_password_user_is_redirected_from_any_panel_url` — `get('/admin')` redirects to the profile page; logout route still works.
-  - `test_changing_password_on_profile_clears_must_change_password`.
+  - `test_admin_cannot_reset_super_admin_id_1` (`id == 1` action hidden and forbidden for non-super-admin).
 - [ ] **Step 2: Run** — expect FAIL.
-- [ ] **Step 3: Implement.** Temporary password via `Str::password(12)`; store through the model's `hashed` cast; show it once via `Notification` or action modal. The middleware reads `Filament::auth()->user()` and compares route names. `ProfileEditCustom`: override `mutateFormDataBeforeSave` (or `afterSave`) to set `must_change_password = false` when a password was provided; require the password field when `must_change_password` is true.
+- [ ] **Step 3: Implement.** The `sendLink` action claims the open request with a guarded update, saves the email (when the user has none), sends via `PasswordResetLink` with `notifyNow`, all in one transaction; on failure roll back and warn.
 - [ ] **Step 4: Run** the class and full suite — expect PASS.
-- [ ] **Step 5: Commit** `feat: add admin-assisted password reset and forced password change`.
+- [ ] **Step 5: Commit** `feat: add admin-assisted password reset by adding email for legacy accounts`.
 
 ### Task 7: Email field for existing users, final regression and deploy notes
 
