@@ -5,7 +5,9 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 use App\Enums\RoleEnum;
+use App\Enums\UserStatus;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -25,6 +27,15 @@ class User extends Authenticatable implements FilamentUser, HasName
     use HasRoles;
 
     /**
+     * Default attribute values.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'status' => UserStatus::ACTIVE,
+    ];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -33,6 +44,7 @@ class User extends Authenticatable implements FilamentUser, HasName
         'rank_id',
         'section_id',
         'username',
+        'email',
         'firstname',
         'lastname',
         'password',
@@ -58,6 +70,7 @@ class User extends Authenticatable implements FilamentUser, HasName
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'approved_at' => 'datetime',
         ];
     }
 
@@ -88,7 +101,23 @@ class User extends Authenticatable implements FilamentUser, HasName
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->hasRole([RoleEnum::SUPERADMIN, RoleEnum::ADMIN, RoleEnum::USER]);
+        return $this->isActive()
+            && $this->hasRole([RoleEnum::SUPERADMIN, RoleEnum::ADMIN, RoleEnum::USER]);
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === UserStatus::ACTIVE;
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('status', UserStatus::ACTIVE);
+    }
+
+    public function scopeStatus(Builder $query, string $status): Builder
+    {
+        return $query->where('status', $status);
     }
 
     public function isAcknowledged($documentId)

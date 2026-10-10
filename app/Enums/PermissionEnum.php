@@ -9,6 +9,7 @@ enum PermissionEnum
     const USER_ADD = 'user.add';
     const USER_EDIT = 'user.edit';
     const USER_DELETE = 'user.delete';
+    const USER_APPROVE = 'user.approve';
 
     // สำหรับเมนู Document
     const DOCUMENT_VIEW = 'document.view';

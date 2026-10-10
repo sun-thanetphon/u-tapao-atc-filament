@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament\Profile;
 
+use App\Filament\Resources\UserResource;
 use Filament\Pages\Auth\EditProfile;
 
 class ProfileEditCustom extends EditProfile
@@ -13,6 +14,7 @@ class ProfileEditCustom extends EditProfile
             'form' => $this->form(
                 $this->makeForm()
                     ->schema([
+                        UserResource::emailField(),
                         $this->getPasswordFormComponent(),
                         $this->getPasswordConfirmationFormComponent(),
                     ])

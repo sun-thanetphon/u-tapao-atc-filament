@@ -4,6 +4,9 @@ namespace App\Providers\Filament;
 
 use App\Filament\Custom\PublicHtmlImages;
 use App\Providers\Filament\Auth\CustomLogin;
+use App\Providers\Filament\Auth\CustomRegister;
+use App\Providers\Filament\Auth\CustomRequestPasswordReset;
+use App\Providers\Filament\Auth\CustomResetPassword;
 use App\Providers\Filament\Profile\ProfileEditCustom;
 use Filament\FontProviders\GoogleFontProvider;
 use Filament\Http\Middleware\Authenticate;
@@ -35,6 +38,8 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login(CustomLogin::class)
+            ->registration(CustomRegister::class)
+            ->passwordReset(CustomRequestPasswordReset::class, CustomResetPassword::class)
             ->plugins([
                 FilamentBackgroundsPlugin::make()
                 ->imageProvider(

@@ -263,6 +263,40 @@
     color: #fff;
 }
 
+/* ฟอร์มขอให้ผู้ดูแลช่วยตั้งรหัสผ่าน (หน้าลืมรหัสผ่าน) */
+.uta-admin-request {
+    border-top: 1px solid rgba(15, 23, 42, 0.1);
+    padding-top: 1.5rem;
+}
+
+.dark .uta-admin-request {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.uta-admin-request-title {
+    color: var(--uta-navy);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.dark .uta-admin-request-title {
+    color: #fff;
+}
+
+.uta-admin-request-desc {
+    margin-top: 0.25rem;
+    color: var(--uta-slate);
+    font-size: 0.875rem;
+}
+
+.dark .uta-admin-request-desc {
+    color: #9ca3af;
+}
+
+.uta-admin-request-form {
+    margin-top: 1rem;
+}
+
 @media (min-width: 1024px) {
     .uta-login {
         grid-template-rows: none;

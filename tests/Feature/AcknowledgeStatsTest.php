@@ -2,8 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RoleEnum;
+use App\Enums\UserStatus;
+use App\Filament\Resources\DocumentResource\Pages\FollowDocument;
 use App\Support\AcknowledgeStats;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class AcknowledgeStatsTest extends TestCase
@@ -70,5 +74,26 @@ class AcknowledgeStatsTest extends TestCase
 
         $this->assertNull(AcknowledgeStats::get()->rate());
         $this->assertTrue(AcknowledgeStats::get()->pending()->isEmpty());
+    }
+
+    public function test_pending_and_rejected_users_are_excluded_from_figures_and_follow_table(): void
+    {
+        $active = $this->makeUser($this->section('ADC'));
+        $pending = $this->makeUser($this->section('ADC'));
+        $rejected = $this->makeUser($this->section('ADC'));
+        $pending->forceFill(['status' => UserStatus::PENDING])->save();
+        $rejected->forceFill(['status' => UserStatus::REJECTED])->save();
+
+        $document = $this->makeDocument([$this->section('ADC')], [$this->section('ADC')]);
+        $document->acknowledges()->create(['user_id' => $rejected->id, 'acknowledge_date' => now()]);
+
+        $stats = AcknowledgeStats::get();
+        $this->assertSame(1, $stats->required());
+        $this->assertSame(0, $stats->done());
+
+        $this->actingAs($this->makeUser($this->section('APP'), RoleEnum::SUPERADMIN));
+        Livewire::test(FollowDocument::class, ['record' => $document->id])
+            ->assertCanSeeTableRecords([$active])
+            ->assertCanNotSeeTableRecords([$pending, $rejected]);
     }
 }
