@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament\Auth;
 
+use App\Enums\UserStatus;
 use Filament\Pages\Auth\Login;
 use Filament\Forms\Components\Component;
 use Filament\Forms\Components\TextInput;
@@ -43,6 +44,21 @@ class CustomLogin extends Login
         }
 
         $user = Filament::auth()->user();
+
+        // ตรวจสถานะหลังรหัสผ่านถูกต้องเท่านั้น เพื่อไม่เปิดเผยสถานะบัญชีให้คนที่ไม่รู้รหัสผ่าน
+        $statusMessage = match ($user->status ?? null) {
+            UserStatus::PENDING => 'บัญชีของคุณรอการอนุมัติจากผู้ดูแลระบบ',
+            UserStatus::REJECTED => 'บัญชีของคุณไม่ได้รับการอนุมัติ กรุณาติดต่อผู้ดูแลระบบ',
+            default => null,
+        };
+
+        if ($statusMessage !== null) {
+            Filament::auth()->logout();
+
+            throw ValidationException::withMessages([
+                'data.username' => $statusMessage,
+            ]);
+        }
 
         if (
             ($user instanceof FilamentUser) &&
