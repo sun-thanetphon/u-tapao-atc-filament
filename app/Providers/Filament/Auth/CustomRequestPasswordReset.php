@@ -59,7 +59,7 @@ class CustomRequestPasswordReset extends RequestPasswordReset
                 ->schema([
                     TextInput::make('username')
                         ->label('ชื่อผู้ใช้ (Username)')
-                        ->helperText('ผู้ดูแลระบบจะตั้งรหัสผ่านชั่วคราวให้ แล้วแจ้งคุณโดยตรง')
+                        ->helperText('ผู้ดูแลระบบจะเพิ่มอีเมลให้บัญชีของคุณ แล้วส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมลนั้น')
                         ->required()
                         ->maxLength(255)
                         ->autocomplete('username'),
@@ -116,7 +116,7 @@ class CustomRequestPasswordReset extends RequestPasswordReset
         // ตอบเหมือนกันทุกกรณี เพื่อไม่ให้เดาได้ว่าชื่อผู้ใช้มีอยู่ในระบบหรือไม่
         Notification::make()
             ->title('หากชื่อผู้ใช้นี้มีอยู่ในระบบ เราได้ส่งคำขอถึงผู้ดูแลระบบแล้ว')
-            ->body('ผู้ดูแลระบบจะติดต่อกลับเพื่อแจ้งรหัสผ่านชั่วคราว')
+            ->body('ผู้ดูแลระบบจะติดต่อกลับ และส่งลิงก์ตั้งรหัสผ่านใหม่ทางอีเมล')
             ->success()
             ->send();
 

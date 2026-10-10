@@ -33,7 +33,6 @@ return new class extends Migration
             $table->foreignId('approved_by')->nullable()->after('status')->constrained('users')->nullOnDelete();
             $table->timestamp('approved_at')->nullable()->after('approved_by');
             $table->text('rejected_reason')->nullable()->after('approved_at');
-            $table->boolean('must_change_password')->default(false)->after('rejected_reason');
         });
     }
 
@@ -45,7 +44,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->dropConstrainedForeignId('approved_by');
             $table->dropIndex(['status']);
-            $table->dropColumn(['email', 'status', 'approved_at', 'rejected_reason', 'must_change_password']);
+            $table->dropColumn(['email', 'status', 'approved_at', 'rejected_reason']);
         });
     }
 };

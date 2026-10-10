@@ -11,14 +11,13 @@ use App\Models\PasswordResetRequest;
 use App\Models\Rank;
 use App\Models\User;
 use App\Providers\Filament\Auth\CustomRequestPasswordReset;
-use App\Providers\Filament\Profile\ProfileEditCustom;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Notifications\Events\NotificationSending;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
@@ -36,6 +35,8 @@ class PasswordResetByAdminTest extends TestCase
         $this->seedReferenceData();
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         RateLimiter::clear($this->usernameLimiterKey());
+        // ส่งเมลทันทีแม้ตั้งคิวเป็น database (โฮสต์ไม่มี worker)
+        config(['queue.default' => 'database']);
     }
 
     protected function usernameLimiterKey(): string
@@ -59,14 +60,9 @@ class PasswordResetByAdminTest extends TestCase
         return $admin;
     }
 
-    protected function notifications()
-    {
-        return collect(session('filament.notifications', []));
-    }
-
     protected function titles(): array
     {
-        return $this->notifications()->pluck('title')->all();
+        return collect(session('filament.notifications', []))->pluck('title')->all();
     }
 
     protected function requestByUsername(string $username)
@@ -79,6 +75,32 @@ class PasswordResetByAdminTest extends TestCase
     protected function openRequestFor(User $user): PasswordResetRequest
     {
         return PasswordResetRequest::create(['user_id' => $user->id]);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function sentRecipients(): array
+    {
+        return collect(app('mailer')->getSymfonyTransport()->messages())
+            ->map(fn ($message) => $message->getEnvelope()->getRecipients()[0]->getAddress())
+            ->all();
+    }
+
+    protected function assertRequestDoneBy(PasswordResetRequest $request, User $admin): void
+    {
+        $request->refresh();
+        $this->assertSame(PasswordResetRequest::STATUS_DONE, $request->status);
+        $this->assertSame($admin->id, (int) $request->handled_by);
+        $this->assertNotNull($request->handled_at);
+    }
+
+    protected function assertRequestStillOpen(PasswordResetRequest $request): void
+    {
+        $request->refresh();
+        $this->assertSame(PasswordResetRequest::STATUS_OPEN, $request->status);
+        $this->assertNull($request->handled_by);
+        $this->assertNull($request->handled_at);
     }
 
     public function test_request_by_username_creates_one_open_request_and_repeat_reuses_it(): void
@@ -152,94 +174,151 @@ class PasswordResetByAdminTest extends TestCase
             ->assertSee('ไม่มีอีเมลในระบบ?');
     }
 
-    public function test_admin_sets_temporary_password(): void
+    public function test_admin_adds_email_for_user_without_email_and_link_is_sent(): void
     {
-        $logFile = storage_path('logs/laravel.log');
-        $logBefore = is_file($logFile) ? (string) file_get_contents($logFile) : '';
-        $logged = [];
-        Event::listen(MessageLogged::class, function (MessageLogged $event) use (&$logged) {
-            $logged[] = $event->message . ' ' . json_encode($event->context);
-        });
-
         $admin = $this->actingAdmin();
-        $user = $this->member();
-        $oldHash = $user->password;
-        $request = $this->openRequestFor($user);
+        $legacy = $this->member();
+        $request = $this->openRequestFor($legacy);
 
         Livewire::test(ListPasswordResetRequests::class)
-            ->assertTableActionVisible('setTemporaryPassword', $request)
-            ->callTableAction('setTemporaryPassword', $request)
+            ->assertTableActionVisible('sendLink', $request)
+            ->mountTableAction('sendLink', $request)
+            // ช่องอีเมลแสดงเฉพาะบัญชีที่ยังไม่มีอีเมล; ค่าที่มีช่องว่างหัวท้ายถูกตัดออก
+            ->set('mountedTableActionsData.0.email', '  legacy@example.com  ')
+            ->callMountedTableAction()
             ->assertHasNoTableActionErrors();
 
-        // รหัสผ่านแสดงในแจ้งเตือนครั้งเดียว
-        $bodies = $this->notifications()->pluck('body')->filter()->values();
-        $withPassword = $bodies->filter(fn ($body) => preg_match('/<code>(.+?)<\/code>/', (string) $body));
-        $this->assertCount(1, $withPassword);
-        preg_match('/<code>(.+?)<\/code>/', (string) $withPassword->first(), $m);
-        $plain = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5);
-        $this->assertSame(12, mb_strlen($plain));
-
-        $user->refresh();
-        $this->assertNotSame($oldHash, $user->password);
-        $this->assertTrue(Hash::check($plain, $user->password));
-        $this->assertNotSame($plain, $user->password);
-        $this->assertTrue($user->must_change_password);
-
-        $request->refresh();
-        $this->assertSame(PasswordResetRequest::STATUS_DONE, $request->status);
-        $this->assertSame($admin->id, (int) $request->handled_by);
-        $this->assertNotNull($request->handled_at);
-
-        // ไม่ถูกบันทึกลง log หรือฐานข้อมูลเป็นข้อความธรรมดา
-        foreach ($logged as $line) {
-            $this->assertStringNotContainsString($plain, $line);
-        }
-        $logAfter = is_file($logFile) ? (string) file_get_contents($logFile) : '';
-        $this->assertStringNotContainsString($plain, substr($logAfter, strlen($logBefore)));
-        $this->assertStringNotContainsString($plain, $logAfter);
-        $this->assertSame(0, DB::table('users')->where('password', $plain)->count());
-        $this->assertStringNotContainsString($plain, json_encode(DB::table('password_reset_requests')->get()));
-
-        // เรียกซ้ำกับคำขอที่ปิดแล้ว ไม่เปลี่ยนรหัสผ่านอีก
-        $hashAfter = $user->password;
-        session()->forget('filament.notifications');
-        PasswordResetRequestResource::setTemporaryPasswordFor($request);
-        $this->assertSame($hashAfter, $user->fresh()->password);
-        $this->assertContains('รายการนี้ถูกดำเนินการไปแล้ว', $this->titles());
+        $this->assertSame('legacy@example.com', $legacy->fresh()->email);
+        $this->assertSame(['legacy@example.com'], $this->sentRecipients());
+        $this->assertSame(0, DB::table('jobs')->count());
+        $this->assertSame(1, DB::table('password_reset_tokens')->where('email', 'legacy@example.com')->count());
+        $this->assertRequestDoneBy($request, $admin);
     }
 
-    public function test_admin_can_send_link_only_if_user_has_email(): void
+    public function test_duplicate_email_is_rejected_without_changes(): void
     {
-        config(['queue.default' => 'database']);
-        $admin = $this->actingAdmin();
-        $withEmail = $this->member(email: 'person@example.com');
-        $withoutEmail = $this->member();
-        $requestA = $this->openRequestFor($withEmail);
-        $requestB = $this->openRequestFor($withoutEmail);
+        $this->actingAdmin();
+        $this->member(email: 'taken@example.com');
+        $legacy = $this->member();
+        $request = $this->openRequestFor($legacy);
 
         Livewire::test(ListPasswordResetRequests::class)
-            ->assertTableActionVisible('sendLink', $requestA)
-            ->assertTableActionHidden('sendLink', $requestB)
-            ->callTableAction('sendLink', $requestA)
+            ->callTableAction('sendLink', $request, ['email' => 'taken@example.com'])
+            ->assertHasTableActionErrors(['email' => 'unique']);
+
+        $this->assertNull($legacy->fresh()->email);
+        $this->assertSame([], $this->sentRecipients());
+        $this->assertSame(0, DB::table('password_reset_tokens')->count());
+        $this->assertRequestStillOpen($request);
+
+        // เรียกตรงก็ถูกตรวจซ้ำฝั่งเซิร์ฟเวอร์
+        PasswordResetRequestResource::sendLinkFor($request, 'taken@example.com');
+        $this->assertNull($legacy->fresh()->email);
+        $this->assertRequestStillOpen($request);
+        $this->assertSame([], $this->sentRecipients());
+    }
+
+    public function test_email_of_soft_deleted_user_can_be_reused(): void
+    {
+        $admin = $this->actingAdmin();
+        $this->member(email: 'old@example.com')->delete();
+        $legacy = $this->member();
+        $request = $this->openRequestFor($legacy);
+
+        Livewire::test(ListPasswordResetRequests::class)
+            ->callTableAction('sendLink', $request, ['email' => 'old@example.com'])
             ->assertHasNoTableActionErrors();
 
-        // ส่งทันที ไม่เข้าคิว (โฮสต์ไม่มี worker)
+        $this->assertSame('old@example.com', $legacy->fresh()->email);
+        $this->assertRequestDoneBy($request, $admin);
+    }
+
+    public function test_invalid_or_missing_email_is_rejected(): void
+    {
+        $this->actingAdmin();
+        $legacy = $this->member();
+        $request = $this->openRequestFor($legacy);
+
+        Livewire::test(ListPasswordResetRequests::class)
+            ->callTableAction('sendLink', $request, ['email' => 'not-an-email'])
+            ->assertHasTableActionErrors(['email' => 'email']);
+
+        Livewire::test(ListPasswordResetRequests::class)
+            ->callTableAction('sendLink', $request, ['email' => ''])
+            ->assertHasTableActionErrors(['email' => 'required']);
+
+        PasswordResetRequestResource::sendLinkFor($request, 'not-an-email');
+        PasswordResetRequestResource::sendLinkFor($request, null);
+
+        $this->assertNull($legacy->fresh()->email);
+        $this->assertSame([], $this->sentRecipients());
+        $this->assertRequestStillOpen($request);
+    }
+
+    public function test_user_with_existing_email_gets_link_there_and_tampered_email_is_ignored(): void
+    {
+        $admin = $this->actingAdmin();
+        $user = $this->member(email: 'person@example.com');
+        $request = $this->openRequestFor($user);
+
+        // ฟอร์มไม่มีช่องอีเมล และค่าที่ยัดเข้ามาทาง Livewire ถูกเมิน
+        $component = Livewire::test(ListPasswordResetRequests::class)
+            ->assertTableActionVisible('sendLink', $request)
+            ->mountTableAction('sendLink', $request);
+        $this->assertSame([], $component->instance()->getMountedTableActionForm()?->getComponents() ?? []);
+
+        $component
+            ->set('mountedTableActionsData.0.email', 'evil@example.com')
+            ->callMountedTableAction()
+            ->assertHasNoTableActionErrors();
+
+        $this->assertSame('person@example.com', $user->fresh()->email);
+        $this->assertSame(['person@example.com'], $this->sentRecipients());
         $this->assertSame(0, DB::table('jobs')->count());
-        $messages = app('mailer')->getSymfonyTransport()->messages();
-        $this->assertCount(1, $messages);
-        $this->assertSame('person@example.com', $messages[0]->getEnvelope()->getRecipients()[0]->getAddress());
         $this->assertSame(1, DB::table('password_reset_tokens')->where('email', 'person@example.com')->count());
+        $this->assertSame(0, DB::table('password_reset_tokens')->where('email', 'evil@example.com')->count());
+        $this->assertRequestDoneBy($request, $admin);
 
-        $requestA->refresh();
-        $this->assertSame(PasswordResetRequest::STATUS_DONE, $requestA->status);
-        $this->assertSame($admin->id, (int) $requestA->handled_by);
-        $this->assertNotNull($requestA->handled_at);
+        // เรียกตรงพร้อมอีเมลอื่น: ยังส่งไปที่อีเมลเดิมเท่านั้น
+        DB::table('password_reset_tokens')->delete();
+        $second = $this->openRequestFor($user);
+        PasswordResetRequestResource::sendLinkFor($second, 'evil@example.com');
 
-        // เรียกตรงกับผู้ใช้ที่ไม่มีอีเมล: ไม่มีผล
-        PasswordResetRequestResource::sendLinkFor($requestB);
-        $this->assertSame(PasswordResetRequest::STATUS_OPEN, $requestB->fresh()->status);
-        $this->assertNull($requestB->fresh()->handled_by);
-        $this->assertCount(1, app('mailer')->getSymfonyTransport()->messages());
+        $this->assertSame('person@example.com', $user->fresh()->email);
+        $this->assertSame(['person@example.com', 'person@example.com'], $this->sentRecipients());
+        $this->assertRequestDoneBy($second, $admin);
+    }
+
+    public function test_failure_to_send_rolls_back_email_and_keeps_request_open(): void
+    {
+        $this->actingAdmin();
+        $legacy = $this->member();
+        $request = $this->openRequestFor($legacy);
+        Event::listen(NotificationSending::class, fn () => throw new \RuntimeException('smtp down'));
+
+        Livewire::test(ListPasswordResetRequests::class)
+            ->callTableAction('sendLink', $request, ['email' => 'legacy@example.com'])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertNull($legacy->fresh()->email);
+        $this->assertRequestStillOpen($request);
+        $this->assertSame(0, DB::table('password_reset_tokens')->count());
+        $this->assertSame([], $this->sentRecipients());
+        $this->assertContains('ส่งลิงก์ไม่สำเร็จ', $this->titles());
+    }
+
+    public function test_already_handled_request_is_not_processed_twice(): void
+    {
+        $this->actingAdmin();
+        $legacy = $this->member();
+        $request = $this->openRequestFor($legacy);
+        $request->forceFill(['status' => PasswordResetRequest::STATUS_DONE])->save();
+
+        PasswordResetRequestResource::sendLinkFor($request, 'legacy@example.com');
+
+        $this->assertNull($legacy->fresh()->email);
+        $this->assertSame([], $this->sentRecipients());
+        $this->assertContains('รายการนี้ถูกดำเนินการไปแล้ว', $this->titles());
     }
 
     public function test_plain_user_cannot_see_or_open_the_resource(): void
@@ -275,6 +354,25 @@ class PasswordResetByAdminTest extends TestCase
         Livewire::test(ListPasswordResetRequests::class)->assertForbidden();
     }
 
+    public function test_plain_user_cannot_call_action_directly(): void
+    {
+        $legacy = $this->member();
+        $request = $this->openRequestFor($legacy);
+
+        $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::USER));
+
+        try {
+            PasswordResetRequestResource::sendLinkFor($request, 'legacy@example.com');
+            $this->fail('sendLinkFor should be forbidden');
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+        }
+
+        $this->assertNull($legacy->fresh()->email);
+        $this->assertRequestStillOpen($request);
+        $this->assertSame([], $this->sentRecipients());
+    }
+
     public function test_admin_cannot_reset_super_admin_id_1(): void
     {
         $root = User::forceCreate([
@@ -282,174 +380,55 @@ class PasswordResetByAdminTest extends TestCase
             'rank_id' => Rank::query()->value('id'),
             'section_id' => $this->section('ADC'),
             'username' => 'root_admin',
-            'email' => 'root@example.com',
             'firstname' => 'ผู้ดูแล',
             'lastname' => 'สูงสุด',
             'password' => 'root-original-pass',
             'status' => UserStatus::ACTIVE,
         ]);
         $root->assignRole(RoleEnum::SUPERADMIN);
-        $rootHash = $root->fresh()->password;
         $rootRequest = $this->openRequestFor($root);
 
         $otherAdmin = $this->member(role: RoleEnum::ADMIN);
         $otherRequest = $this->openRequestFor($otherAdmin);
 
-        $this->actingAdmin();
+        $admin = $this->actingAdmin();
 
         Livewire::test(ListPasswordResetRequests::class)
-            ->assertTableActionHidden('setTemporaryPassword', $rootRequest)
             ->assertTableActionHidden('sendLink', $rootRequest)
-            ->assertTableActionVisible('setTemporaryPassword', $otherRequest);
+            ->assertTableActionVisible('sendLink', $otherRequest);
 
         // บังคับฝั่งเซิร์ฟเวอร์ด้วย แม้เรียกตรง
-        foreach (['setTemporaryPasswordFor', 'sendLinkFor'] as $method) {
-            try {
-                PasswordResetRequestResource::{$method}($rootRequest);
-                $this->fail("{$method} should be forbidden");
-            } catch (HttpException $e) {
-                $this->assertSame(403, $e->getStatusCode());
-            }
+        try {
+            PasswordResetRequestResource::sendLinkFor($rootRequest, 'attacker@example.com');
+            $this->fail('sendLinkFor should be forbidden for id 1');
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
         }
-        $this->assertSame($rootHash, $root->fresh()->password);
-        $this->assertFalse($root->fresh()->must_change_password);
-        $this->assertSame(PasswordResetRequest::STATUS_OPEN, $rootRequest->fresh()->status);
+        $this->assertNull($root->fresh()->email);
+        $this->assertRequestStillOpen($rootRequest);
         $this->assertSame(0, DB::table('password_reset_tokens')->count());
 
-        // admin รีเซ็ต admin คนอื่นได้
-        Livewire::test(ListPasswordResetRequests::class)->callTableAction('setTemporaryPassword', $otherRequest);
-        $this->assertTrue($otherAdmin->fresh()->must_change_password);
-
-        // super-admin รีเซ็ต id 1 ได้
-        $this->actingAdmin(RoleEnum::SUPERADMIN);
+        // admin ส่งลิงก์ให้ admin คนอื่นได้
         Livewire::test(ListPasswordResetRequests::class)
-            ->assertTableActionVisible('setTemporaryPassword', $rootRequest)
-            ->callTableAction('setTemporaryPassword', $rootRequest);
-        $this->assertNotSame($rootHash, $root->fresh()->password);
-        $this->assertSame(PasswordResetRequest::STATUS_DONE, $rootRequest->fresh()->status);
+            ->callTableAction('sendLink', $otherRequest, ['email' => 'other-admin@example.com'])
+            ->assertHasNoTableActionErrors();
+        $this->assertSame('other-admin@example.com', $otherAdmin->fresh()->email);
+        $this->assertRequestDoneBy($otherRequest, $admin);
+
+        // super-admin จัดการ id 1 ได้
+        $super = $this->actingAdmin(RoleEnum::SUPERADMIN);
+        Livewire::test(ListPasswordResetRequests::class)
+            ->assertTableActionVisible('sendLink', $rootRequest)
+            ->callTableAction('sendLink', $rootRequest, ['email' => 'root@example.com'])
+            ->assertHasNoTableActionErrors();
+        $this->assertSame('root@example.com', $root->fresh()->email);
+        $this->assertRequestDoneBy($rootRequest, $super);
     }
 
-    public function test_plain_user_cannot_call_actions_directly(): void
+    public function test_temporary_password_and_forced_change_are_gone(): void
     {
-        $user = $this->member(email: 'person@example.com');
-        $hash = $user->password;
-        $request = $this->openRequestFor($user);
-
-        $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::USER));
-
-        foreach (['setTemporaryPasswordFor', 'sendLinkFor'] as $method) {
-            try {
-                PasswordResetRequestResource::{$method}($request);
-                $this->fail("{$method} should be forbidden");
-            } catch (HttpException $e) {
-                $this->assertSame(403, $e->getStatusCode());
-            }
-        }
-
-        $this->assertSame($hash, $user->fresh()->password);
-        $this->assertSame(PasswordResetRequest::STATUS_OPEN, $request->fresh()->status);
-    }
-
-    public function test_temp_password_user_is_redirected_from_any_panel_url(): void
-    {
-        $user = $this->member();
-        $user->forceFill(['must_change_password' => true])->save();
-        $this->actingAs($user);
-
-        $this->get('/admin')->assertRedirect(Filament::getProfileUrl());
-        $this->get(Filament::getUrl())->assertRedirect(Filament::getProfileUrl());
-
-        // หน้าโปรไฟล์ไม่ redirect วน และแสดงคำแนะนำภาษาไทย
-        $this->get(Filament::getProfileUrl())
-            ->assertOk()
-            ->assertSee('คุณกำลังใช้รหัสผ่านชั่วคราว');
-
-        // ออกจากระบบได้ตามปกติ
-        $this->post(Filament::getLogoutUrl())->assertRedirect(Filament::getLoginUrl());
-        $this->assertGuest();
-    }
-
-    public function test_user_without_flag_is_not_redirected(): void
-    {
-        $this->actingAs($this->member());
-
-        $this->get(Filament::getUrl())->assertOk();
-    }
-
-    public function test_changing_password_on_profile_clears_must_change_password(): void
-    {
-        $user = $this->member();
-        $user->forceFill(['must_change_password' => true, 'password' => 'temp-pass-123'])->save();
-        $this->actingAs($user);
-
-        // ต้องกรอกรหัสผ่านใหม่
-        Livewire::test(ProfileEditCustom::class)
-            ->fillForm(['password' => '', 'passwordConfirmation' => ''])
-            ->call('save')
-            ->assertHasFormErrors(['password' => 'required']);
-        $this->assertTrue($user->fresh()->must_change_password);
-
-        // ใช้รหัสชั่วคราวเดิมซ้ำไม่ได้
-        Livewire::test(ProfileEditCustom::class)
-            ->fillForm(['password' => 'temp-pass-123', 'passwordConfirmation' => 'temp-pass-123'])
-            ->call('save')
-            ->assertHasFormErrors(['password']);
-        $this->assertTrue($user->fresh()->must_change_password);
-
-        Livewire::test(ProfileEditCustom::class)
-            ->fillForm(['password' => 'brand-new-pass-1', 'passwordConfirmation' => 'brand-new-pass-1'])
-            ->call('save')
-            ->assertHasNoFormErrors();
-
-        $user->refresh();
-        $this->assertFalse($user->must_change_password);
-        $this->assertTrue(Hash::check('brand-new-pass-1', $user->password));
-
-        // หลังเปลี่ยนแล้ว เข้าแผงได้ตามปกติ
-        $this->get(Filament::getUrl())->assertOk();
-    }
-
-    public function test_profile_save_through_livewire_http_endpoint_works_while_flag_is_set(): void
-    {
-        $user = $this->member();
-        $user->forceFill(['must_change_password' => true])->save();
-        $this->actingAs($user);
-
-        $html = $this->get(Filament::getProfileUrl())->assertOk()->getContent();
-
-        preg_match_all('/wire:snapshot="([^"]+)"/', $html, $matches);
-        $snapshot = collect($matches[1])
-            ->map(fn ($raw) => html_entity_decode($raw, ENT_QUOTES | ENT_HTML5))
-            ->first(fn ($json) => str_contains(json_decode($json, true)['memo']['name'] ?? '', 'profile-edit-custom'));
-        $this->assertNotNull($snapshot, 'profile component snapshot not found');
-
-        $this->withHeaders(['X-Livewire' => 'true'])
-            ->postJson(app('livewire')->getUpdateUri(), [
-                'components' => [[
-                    'snapshot' => $snapshot,
-                    'updates' => ['data.password' => 'brand-new-pass-1', 'data.passwordConfirmation' => 'brand-new-pass-1'],
-                    'calls' => [['path' => '', 'method' => 'save', 'params' => []]],
-                ]],
-            ])
-            ->assertOk();
-
-        $user->refresh();
-        $this->assertFalse($user->must_change_password);
-        $this->assertTrue(Hash::check('brand-new-pass-1', $user->password));
-    }
-
-    public function test_profile_without_flag_keeps_optional_password(): void
-    {
-        $user = $this->member();
-        $hash = $user->password;
-        $this->actingAs($user);
-
-        Livewire::test(ProfileEditCustom::class)
-            ->fillForm(['password' => '', 'passwordConfirmation' => ''])
-            ->call('save')
-            ->assertHasNoFormErrors();
-
-        $this->assertSame($hash, $user->fresh()->password);
-        $this->assertFalse($user->fresh()->must_change_password);
+        $this->assertFalse(Schema::hasColumn('users', 'must_change_password'));
+        $this->assertFalse(class_exists('App\\Http\\Middleware\\ForcePasswordChange'));
+        $this->assertFalse(method_exists(PasswordResetRequestResource::class, 'setTemporaryPasswordFor'));
     }
 }

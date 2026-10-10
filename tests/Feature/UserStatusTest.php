@@ -57,11 +57,9 @@ class UserStatusTest extends TestCase
             'lastname' => 'b',
             'password' => bcrypt('password'),
             'status' => 'pending',
-            'must_change_password' => true,
         ]);
 
         $user = $user->fresh();
         $this->assertSame('active', $user->status);
-        $this->assertFalse($user->must_change_password);
     }
 }

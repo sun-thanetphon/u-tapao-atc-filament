@@ -8,6 +8,7 @@ use App\Filament\Resources\PasswordResetRequestResource\Pages;
 use App\Models\PasswordResetRequest;
 use App\Models\User;
 use App\Support\PasswordResetLink;
+use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -16,7 +17,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Unique;
+use RuntimeException;
 use Throwable;
 
 class PasswordResetRequestResource extends Resource
@@ -99,15 +103,12 @@ class PasswordResetRequestResource extends Resource
             ]) > 0;
     }
 
-    protected static function release(PasswordResetRequest $request): void
+    /**
+     * อีเมลต้องไม่ซ้ำกับบัญชีอื่นที่ยังไม่ถูกลบ
+     */
+    protected static function uniqueEmailRule(int $userId): Unique
     {
-        PasswordResetRequest::query()
-            ->whereKey($request->id)
-            ->update([
-                'status' => PasswordResetRequest::STATUS_OPEN,
-                'handled_by' => null,
-                'handled_at' => null,
-            ]);
+        return Rule::unique('users', 'email')->ignore($userId)->whereNull('deleted_at');
     }
 
     protected static function activeTarget(PasswordResetRequest $request): ?User
@@ -123,59 +124,12 @@ class PasswordResetRequestResource extends Resource
     }
 
     /**
-     * ส่งลิงก์ตั้งรหัสผ่านทางอีเมล (ลิงก์เดียวกับหน้าลืมรหัสผ่าน ส่งทันที ไม่เข้าคิว)
+     * ส่งลิงก์ตั้งรหัสผ่านใหม่ (ลิงก์เดียวกับหน้าลืมรหัสผ่าน ส่งทันที ไม่เข้าคิว)
+     * - ผู้ใช้มีอีเมลแล้ว: ส่งไปที่อีเมลเดิมเสมอ ไม่สนใจ $email ที่ส่งเข้ามา
+     * - ผู้ใช้ยังไม่มีอีเมล (บัญชีเก่า): บันทึก $email ให้ผู้ใช้แล้วส่งลิงก์ ถ้าส่งไม่สำเร็จจะย้อนกลับทั้งหมด
+     * คืน true เมื่อส่งสำเร็จ
      */
-    public static function sendLinkFor(PasswordResetRequest $request): void
-    {
-        static::authorizeHandle($request);
-
-        $user = static::activeTarget($request);
-
-        if (! $user || blank($user->email)) {
-            Notification::make()->title('บัญชีนี้ไม่มีอีเมล หรือไม่ได้อยู่ในสถานะใช้งาน')->warning()->send();
-
-            return;
-        }
-
-        if (! static::claim($request)) {
-            static::notifyAlreadyHandled();
-
-            return;
-        }
-
-        try {
-            $status = PasswordResetLink::send($user->email);
-        } catch (Throwable $e) {
-            Log::error('Failed to send password reset link', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
-            ]);
-            $status = null;
-        }
-
-        if ($status !== Password::RESET_LINK_SENT) {
-            // ส่งไม่สำเร็จ เปิดคำขอไว้ตามเดิมเพื่อให้ลองใหม่ได้
-            static::release($request);
-
-            Notification::make()
-                ->title('ส่งลิงก์ไม่สำเร็จ')
-                ->body($status === Password::RESET_THROTTLED ? 'เพิ่งส่งลิงก์ไปเมื่อสักครู่ กรุณารอสักครู่แล้วลองใหม่' : 'กรุณาลองใหม่อีกครั้ง')
-                ->danger()
-                ->send();
-
-            return;
-        }
-
-        Notification::make()
-            ->title('ส่งลิงก์ตั้งรหัสผ่านไปที่ ' . $user->email . ' แล้ว')
-            ->success()
-            ->send();
-    }
-
-    /**
-     * ตั้งรหัสผ่านชั่วคราว แสดงให้ผู้ดูแลเห็นครั้งเดียว และบังคับให้ผู้ใช้เปลี่ยนเมื่อเข้าสู่ระบบ
-     */
-    public static function setTemporaryPasswordFor(PasswordResetRequest $request): void
+    public static function sendLinkFor(PasswordResetRequest $request, ?string $email = null): bool
     {
         static::authorizeHandle($request);
 
@@ -184,41 +138,76 @@ class PasswordResetRequestResource extends Resource
         if (! $user) {
             Notification::make()->title('บัญชีนี้ไม่ได้อยู่ในสถานะใช้งาน')->warning()->send();
 
-            return;
+            return false;
         }
 
-        $plain = Str::password(12);
+        $newEmail = null;
 
-        $changed = DB::transaction(function () use ($request, $user, $plain) {
-            if (! static::claim($request)) {
+        if (blank($user->email)) {
+            $newEmail = trim((string) $email);
+
+            // ตรวจซ้ำฝั่งเซิร์ฟเวอร์ (ฟอร์มตรวจแล้ว แต่กันการเรียกตรง)
+            $validator = Validator::make(
+                ['email' => $newEmail],
+                ['email' => ['required', 'email', 'max:255', static::uniqueEmailRule($user->id)]],
+            );
+
+            if ($validator->fails()) {
+                Notification::make()->title('อีเมลไม่ถูกต้องหรือถูกใช้แล้ว')->warning()->send();
+
                 return false;
             }
+        }
 
-            // cast "hashed" ของโมเดลแฮชรหัสผ่านให้ ไม่เก็บข้อความธรรมดา
-            $user->forceFill([
-                'password' => $plain,
-                'must_change_password' => true,
-                'remember_token' => Str::random(60),
-            ])->save();
+        $target = $newEmail ?? $user->email;
 
-            // ออกจากระบบทุกอุปกรณ์ที่ล็อกอินค้างไว้
-            DB::table(config('session.table', 'sessions'))->where('user_id', $user->id)->delete();
+        try {
+            $sent = DB::transaction(function () use ($request, $user, $newEmail, $target) {
+                if (! static::claim($request)) {
+                    return false;
+                }
 
-            return true;
-        });
+                if ($newEmail !== null) {
+                    $user->email = $newEmail;
+                    $user->save();
+                }
 
-        if (! $changed) {
+                $status = PasswordResetLink::send($target);
+
+                if ($status !== Password::RESET_LINK_SENT) {
+                    // โยนออกไปเพื่อย้อนกลับทั้งคำขอและอีเมลที่เพิ่งบันทึก
+                    throw new RuntimeException('Password broker returned [' . $status . ']');
+                }
+
+                return true;
+            });
+        } catch (Throwable $e) {
+            Log::error('Failed to send password reset link', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            Notification::make()
+                ->title('ส่งลิงก์ไม่สำเร็จ')
+                ->body('ยังไม่ได้บันทึกการเปลี่ยนแปลง กรุณาลองใหม่อีกครั้ง')
+                ->warning()
+                ->send();
+
+            return false;
+        }
+
+        if (! $sent) {
             static::notifyAlreadyHandled();
 
-            return;
+            return false;
         }
 
         Notification::make()
-            ->title('ตั้งรหัสผ่านชั่วคราวให้ ' . $user->username . ' แล้ว')
-            ->body('รหัสผ่านชั่วคราว: <code>' . e($plain) . '</code><br>แสดงเพียงครั้งเดียว กรุณาจดและแจ้งผู้ใช้โดยตรง ผู้ใช้จะต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบ')
+            ->title('ส่งลิงก์ตั้งรหัสผ่านไปที่ ' . $target . ' แล้ว')
             ->success()
-            ->persistent()
             ->send();
+
+        return true;
     }
 
     public static function table(Table $table): Table
@@ -263,21 +252,25 @@ class PasswordResetRequestResource extends Resource
             ])
             ->actions([
                 Tables\Actions\Action::make('sendLink')
-                    ->label('ส่งลิงก์ทางอีเมล')
+                    ->label('ส่งลิงก์ตั้งรหัสผ่านใหม่')
                     ->icon('heroicon-o-envelope')
                     ->requiresConfirmation()
-                    ->modalHeading('ส่งลิงก์ตั้งรหัสผ่านทางอีเมล')
-                    ->visible(fn (PasswordResetRequest $record) => static::canHandle($record) && filled($record->user?->email))
-                    ->action(fn (PasswordResetRequest $record) => static::sendLinkFor($record)),
-                Tables\Actions\Action::make('setTemporaryPassword')
-                    ->label('ตั้งรหัสผ่านชั่วคราว')
-                    ->icon('heroicon-o-key')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->modalHeading('ตั้งรหัสผ่านชั่วคราว')
-                    ->modalDescription('ระบบจะสร้างรหัสผ่านใหม่และแสดงให้เห็นเพียงครั้งเดียว ผู้ใช้จะต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบ')
+                    ->modalHeading('ส่งลิงก์ตั้งรหัสผ่านใหม่')
+                    ->modalDescription(fn (PasswordResetRequest $record): string => filled($record->user?->email)
+                        ? 'ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่ ' . $record->user->email
+                        : 'บัญชีนี้ยังไม่มีอีเมล กรอกอีเมลของผู้ใช้เพื่อส่งลิงก์ตั้งรหัสผ่านใหม่')
+                    ->form(fn (PasswordResetRequest $record): array => filled($record->user?->email) ? [] : [
+                        Forms\Components\TextInput::make('email')
+                            ->label('อีเมลของผู้ใช้')
+                            ->helperText('บัญชีนี้ยังไม่มีอีเมล กรอกอีเมลของผู้ใช้เพื่อส่งลิงก์ตั้งรหัสผ่านใหม่')
+                            ->required()
+                            ->email()
+                            ->maxLength(255)
+                            ->afterStateUpdated(fn (Forms\Set $set, ?string $state) => $set('email', trim((string) $state)))
+                            ->rules([static::uniqueEmailRule($record->user_id)]),
+                    ])
                     ->visible(fn (PasswordResetRequest $record) => static::canHandle($record))
-                    ->action(fn (PasswordResetRequest $record) => static::setTemporaryPasswordFor($record)),
+                    ->action(fn (PasswordResetRequest $record, array $data) => static::sendLinkFor($record, $data['email'] ?? null)),
             ])
             ->bulkActions([]);
     }
