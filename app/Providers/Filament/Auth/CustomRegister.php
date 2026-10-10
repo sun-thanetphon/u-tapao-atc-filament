@@ -12,6 +12,7 @@ use App\Support\SafeMail;
 use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Component;
+use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -185,10 +186,16 @@ class CustomRegister extends Register
 
     protected function getHoneypotComponent(): Component
     {
-        return TextInput::make('website')
-            ->label('Website')
-            ->autocomplete(false)
-            ->extraAttributes(['style' => 'position:absolute;left:-9999px;height:0;overflow:hidden;', 'aria-hidden' => 'true'])
-            ->extraInputAttributes(['tabindex' => -1]);
+        // ซ่อนทั้งกลุ่ม (ป้ายชื่อ + ช่องกรอก) ให้คนมองไม่เห็น แต่บอตที่กรอกทุกช่องยังเจอ
+        return Group::make([
+            TextInput::make('website')
+                ->label('Website')
+                ->autocomplete(false)
+                ->extraInputAttributes(['tabindex' => -1]),
+        ])->extraAttributes([
+            'data-honeypot' => 'true',
+            'aria-hidden' => 'true',
+            'style' => 'position:absolute;left:-9999px;height:0;overflow:hidden;',
+        ]);
     }
 }

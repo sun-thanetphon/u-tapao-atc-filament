@@ -2,9 +2,9 @@
 
 namespace App\Support;
 
+use App\Notifications\ResetPasswordThai;
 use Exception;
 use Filament\Facades\Filament;
-use Filament\Notifications\Auth\ResetPassword as ResetPasswordNotification;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Support\Facades\Password;
 
@@ -23,7 +23,7 @@ class PasswordResetLink
                     throw new Exception('Model [' . $user::class . '] does not have a [notifyNow()] method.');
                 }
 
-                $notification = app(ResetPasswordNotification::class, ['token' => $token]);
+                $notification = app(ResetPasswordThai::class, ['token' => $token]);
                 $notification->url = Filament::getResetPasswordUrl($token, $user);
 
                 $user->notifyNow($notification);

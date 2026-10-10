@@ -158,4 +158,16 @@ class RegistrationTest extends TestCase
 
         $this->assertSame('pending', User::where('username', 'newcomer')->value('status'));
     }
+
+    public function test_honeypot_label_and_field_are_hidden_from_people(): void
+    {
+        $html = Livewire::test(CustomRegister::class)->html();
+
+        // ป้ายชื่อ "Website" ต้องอยู่ในกลุ่มที่ถูกซ่อนนอกจอ ไม่ใช่โผล่ให้คนเห็นลอยๆ
+        $this->assertMatchesRegularExpression(
+            '/<div[^>]*data-honeypot="true"[^>]*left:-9999px[^>]*>.*?Website.*?<\/div>/s',
+            $html
+        );
+        $this->assertSame(1, substr_count($html, 'Website'));
+    }
 }

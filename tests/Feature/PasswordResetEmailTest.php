@@ -8,7 +8,7 @@ use App\Providers\Filament\Auth\CustomRequestPasswordReset;
 use App\Providers\Filament\Auth\CustomResetPassword;
 use Carbon\Carbon;
 use Filament\Facades\Filament;
-use Filament\Notifications\Auth\ResetPassword as ResetPasswordNotification;
+use App\Notifications\ResetPasswordThai as ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\Events\NotificationSending;
 use Illuminate\Support\Facades\DB;
@@ -260,5 +260,32 @@ class PasswordResetEmailTest extends TestCase
     public function test_login_page_links_to_password_reset(): void
     {
         $this->get(Filament::getLoginUrl())->assertOk()->assertSee(Filament::getRequestPasswordResetUrl());
+    }
+
+    public function test_reset_email_is_in_thai_and_contains_the_signed_link(): void
+    {
+        $user = $this->userWithEmail();
+        $notification = new \App\Notifications\ResetPasswordThai('tok123');
+        $notification->url = 'https://example.test/reset?token=tok123';
+
+        $mail = $notification->toMail($user);
+        $html = (string) app(\Illuminate\Mail\Markdown::class)->render($mail->markdown, $mail->viewData);
+
+        $this->assertStringContainsString('ตั้งรหัสผ่านใหม่', $mail->subject);
+        $this->assertStringContainsString('https://example.test/reset?token=tok123', $html);
+        $this->assertStringContainsString('60 นาที', $html);
+        $this->assertStringNotContainsString('Regards', $html);
+        $this->assertStringNotContainsString('Hello', $html);
+        $this->assertStringNotContainsString('Reset Password', $html);
+    }
+
+    public function test_reset_email_actually_sent_uses_the_thai_notification(): void
+    {
+        NotificationFacade::fake();
+        $user = $this->userWithEmail();
+
+        \App\Support\PasswordResetLink::send($user->email);
+
+        NotificationFacade::assertSentTo($user, \App\Notifications\ResetPasswordThai::class);
     }
 }
