@@ -10,7 +10,12 @@ use App\Filament\Resources\UserResource\RelationManagers;
 use App\Mail\RegistrationApprovedMail;
 use App\Mail\RegistrationRejectedMail;
 use App\Models\User;
+use App\Support\EmailImport;
+use App\Support\EmailImportException;
+use App\Support\EmailImportResult;
 use App\Support\SafeMail;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -95,6 +100,81 @@ class UserResource extends Resource
             )
             ->dehydrateStateUsing(fn($state) => filled(trim((string) $state)) ? trim($state) : null)
             ->dehydrated();
+    }
+
+    /**
+     * อ่านไฟล์นำเข้าอีเมลจากค่าของช่องอัปโหลด (ไฟล์ชั่วคราวระหว่างดูตัวอย่าง หรือ path ใน disk local หลังบันทึกแล้ว)
+     *
+     * @return list<array{row:int,username:string,email:string}>
+     */
+    public static function readEmailImportFile(mixed $file): array
+    {
+        $file = is_array($file) ? (collect($file)->first()) : $file;
+
+        if ($file instanceof \Illuminate\Http\UploadedFile) {
+            return (new EmailImport)->readFile($file->getRealPath(), $file->getClientOriginalExtension());
+        }
+
+        if (is_string($file) && Storage::disk('local')->exists($file)) {
+            return (new EmailImport)->readFile(Storage::disk('local')->path($file), pathinfo($file, PATHINFO_EXTENSION));
+        }
+
+        throw new EmailImportException('ไม่พบไฟล์ที่อัปโหลด');
+    }
+
+    /**
+     * ตัวอย่างผลนำเข้าสำหรับขั้นตอนที่ 2 (ไม่เขียนฐานข้อมูล)
+     */
+    public static function emailImportPreview(mixed $file, bool $overwrite): \Illuminate\Contracts\View\View
+    {
+        $result = null;
+        $error = null;
+
+        try {
+            $result = (new EmailImport)->analyse(static::readEmailImportFile($file), $overwrite, auth()->user());
+        } catch (EmailImportException $e) {
+            $error = $e->getMessage();
+        }
+
+        return view('filament.resources.user-resource.email-import-preview', ['result' => $result, 'error' => $error]);
+    }
+
+    /**
+     * ขั้นยืนยันนำเข้าอีเมล: ตรวจสิทธิ์ซ้ำฝั่งเซิร์ฟเวอร์ อ่านไฟล์ใหม่แล้วตรวจซ้ำกับฐานข้อมูลใน transaction เดียว
+     */
+    public static function runEmailImport(string $path, bool $overwrite): ?EmailImportResult
+    {
+        abort_unless(auth()->user()?->can(PermissionEnum::USER_EDIT), 403);
+
+        try {
+            $rows = static::readEmailImportFile($path);
+            $result = (new EmailImport)->apply($rows, $overwrite, auth()->user());
+        } catch (EmailImportException $e) {
+            Notification::make()->title($e->getMessage())->danger()->send();
+
+            return null;
+        } finally {
+            Storage::disk('local')->delete($path);
+        }
+
+        $updated = count($result->toUpdate);
+        $unchanged = count($result->unchanged);
+        $skipped = count($result->skipped);
+
+        Log::info('Email import finished', [
+            'actor_id' => auth()->id(),
+            'updated' => $updated,
+            'unchanged' => $unchanged,
+            'skipped' => $skipped,
+        ]);
+
+        Notification::make()
+            ->title('นำเข้าอีเมลเรียบร้อยแล้ว')
+            ->body("อัปเดต {$updated} ผู้ใช้ / ไม่เปลี่ยนแปลง {$unchanged} / ข้าม {$skipped} แถว")
+            ->success()
+            ->send();
+
+        return $result;
     }
 
     protected static function canApprove(): bool
