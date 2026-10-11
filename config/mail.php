@@ -126,4 +126,17 @@ return [
 
     'daily_cap_for_documents' => (int) env('MAIL_DOC_DAILY_CAP', 60),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Document Notification Test Recipient
+    |--------------------------------------------------------------------------
+    |
+    | When set to a valid address, document notifications are sent ONLY to this
+    | address (never to real users) and the document is not marked as notified.
+    | Leave empty to send for real. An invalid value sends nothing at all.
+    |
+    */
+
+    'doc_test_recipient' => env('MAIL_DOC_TEST_RECIPIENT'),
+
 ];
