@@ -9,6 +9,7 @@ use App\Models\Document;
 use App\Models\DocumentCategory;
 use App\Models\Section;
 use App\Models\User;
+use App\Support\DocumentNotifier;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -91,6 +92,15 @@ class DocumentResource extends Resource
                             ->onColor('success')
                             ->offColor('danger')
                             ->default(true),
+                        Forms\Components\Toggle::make('send_notification')
+                            ->label('ส่งอีเมลแจ้งเตือนผู้ที่ต้องรับทราบ')
+                            ->helperText('ส่งครั้งเดียวเมื่อเผยแพร่เอกสารที่ต้องรับทราบ ถ้าไม่ติ๊กตอนนี้ ยังติ๊กส่งภายหลังจากหน้าแก้ไขได้')
+                            // หน้าสร้างติ๊กไว้ให้ ส่วนหน้าแก้ไขต้องติ๊กเอง กันส่งอีเมลโดยไม่ตั้งใจ
+                            ->default(fn (?Document $record): bool => $record === null)
+                            // ไม่ใช่คอลัมน์ในฐานข้อมูล: อ่านค่าจากฟอร์มหลังบันทึกแทน
+                            ->dehydrated(false)
+                            // ส่งแล้วจะไม่ส่งซ้ำอีก
+                            ->hidden(fn (?Document $record): bool => $record?->notified_at !== null),
                     ])
 
             ]);
@@ -192,7 +202,10 @@ class DocumentResource extends Resource
                         })
                         ->label('ติดตามการรับทราบ')
                         ->url(fn(Document $record): string => route('filament.admin.resources.documents.follow', $record)),
-                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\EditAction::make()
+                        ->after(function (Document $record, $livewire): void {
+                            app(DocumentNotifier::class)->notify($record, DocumentNotifier::wantedIn($livewire->getMountedTableActionForm()));
+                        }),
                     Tables\Actions\DeleteAction::make(),
                 ])
                     ->button()

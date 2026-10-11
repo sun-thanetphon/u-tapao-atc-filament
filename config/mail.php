@@ -113,4 +113,17 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Daily Cap For Document Notifications
+    |--------------------------------------------------------------------------
+    |
+    | The mailbox is limited to 100 messages per 24 hours and is shared with
+    | password-reset and registration emails. Document notifications may only
+    | use messages while the total sent today stays within this cap.
+    |
+    */
+
+    'daily_cap_for_documents' => (int) env('MAIL_DOC_DAILY_CAP', 60),
+
 ];
