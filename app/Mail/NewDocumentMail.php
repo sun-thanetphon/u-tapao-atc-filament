@@ -12,15 +12,16 @@ class NewDocumentMail extends Mailable
 {
     /**
      * @param  array<int, string>  $bccAddresses  ผู้รับทั้งหมดอยู่ใน BCC (ผู้รับจะไม่เห็นอีเมลของกันและกัน)
+     * @param  int|null  $testRecipientCount  ไม่เป็น null = โหมดทดสอบ (จำนวนผู้รับจริงที่ยังไม่ได้ส่ง ไม่ใช่อีเมล)
      */
-    public function __construct(public Document $document, public array $bccAddresses)
+    public function __construct(public Document $document, public array $bccAddresses, public ?int $testRecipientCount = null)
     {
     }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'เอกสารใหม่ที่ต้องรับทราบ: ' . $this->document->name,
+            subject: ($this->testRecipientCount !== null ? '[ทดสอบ] ' : '') . 'เอกสารใหม่ที่ต้องรับทราบ: ' . $this->document->name,
             bcc: $this->bccAddresses,
         );
     }
@@ -41,6 +42,7 @@ class NewDocumentMail extends Mailable
                 'category' => $this->document->category?->name,
                 'uploader' => $this->document->creator?->getFullName(),
                 'sections' => implode(', ', $sections),
+                'testRecipientCount' => $this->testRecipientCount,
                 'url' => route('filament.admin.resources.document-tasks.index'),
             ],
         );

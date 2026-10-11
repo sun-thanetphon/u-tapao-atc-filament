@@ -37,7 +37,27 @@ class DocumentNotifier
             return;
         }
 
+        $testRecipient = trim((string) config('mail.doc_test_recipient'));
+
+        // ตั้งที่อยู่ทดสอบไว้แต่ไม่ถูกต้อง: ห้ามส่งให้ใครเลย (ห้ามถอยไปส่งผู้ใช้จริง)
+        if ($testRecipient !== '' && ! filter_var($testRecipient, FILTER_VALIDATE_EMAIL)) {
+            Log::warning('Document notification skipped: MAIL_DOC_TEST_RECIPIENT is invalid', ['document_id' => $document->id]);
+
+            Notification::make()
+                ->title('MAIL_DOC_TEST_RECIPIENT ไม่ถูกต้อง ไม่ได้ส่งอีเมล')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         [$emails, $withoutEmail, $invalid] = $this->recipients($document);
+
+        if ($testRecipient !== '') {
+            $this->notifyTestMode($document, $testRecipient, count($emails));
+
+            return;
+        }
 
         if ($emails === []) {
             Notification::make()
@@ -81,6 +101,49 @@ class DocumentNotifier
 
         // ฮอสต์ไม่มี queue worker จึงส่งหลังตอบกลับด้วย terminating callback
         app()->terminating(fn () => $this->deliver($document, $to, $chunks, count($emails), $claimedAt));
+    }
+
+    /**
+     * โหมดทดสอบ: ส่งฉบับเดียวถึงที่อยู่ทดสอบเท่านั้น ไม่จับจองเอกสาร (notified_at ยังเป็น NULL)
+     * จึงส่งจริงได้ภายหลังเมื่อปิดโหมดทดสอบ ผู้รับจริงไม่ปรากฏในอีเมล บันทึก หรือที่ใดเลย มีแต่จำนวน
+     */
+    protected function notifyTestMode(Document $document, string $testRecipient, int $realCount): void
+    {
+        if (! MailQuota::canUse(1, (int) config('mail.daily_cap_for_documents', 60))) {
+            Notification::make()
+                ->title('โควตาอีเมลวันนี้เหลือไม่พอ ยังไม่ได้ส่ง ลองใหม่ภายหลังจากหน้าแก้ไขเอกสาร')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title("โหมดทดสอบ: ส่งอีเมลถึงที่อยู่ทดสอบ 1 ที่เท่านั้น (ผู้รับจริง {$realCount} คน ยังไม่ได้ส่ง)")
+            ->warning()
+            ->send();
+
+        app()->terminating(function () use ($document, $testRecipient, $realCount) {
+            $sent = false;
+
+            try {
+                $sent = SafeMail::send($testRecipient, app()->make(NewDocumentMail::class, [
+                    'document' => $document,
+                    'bccAddresses' => [],
+                    'testRecipientCount' => $realCount,
+                ]));
+            } catch (Throwable $e) {
+                Log::error('Document test notification crashed while sending', [
+                    'document_id' => $document->id,
+                    'exception' => $e::class,
+                ]);
+            }
+
+            Log::log($sent ? 'info' : 'error', $sent ? 'Document test notification sent' : 'Document test notification failed', [
+                'document_id' => $document->id,
+                'real_recipients' => $realCount,
+            ]);
+        });
     }
 
     /**
