@@ -25,7 +25,8 @@ class Document extends Model
     protected $casts = [
         'view_sections' => 'array',
         'acknowledge_sections' => 'array',
-        'publish' => 'boolean'
+        'publish' => 'boolean',
+        'notified_at' => 'datetime',
     ];
 
     public function creator(): BelongsTo

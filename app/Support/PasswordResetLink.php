@@ -16,7 +16,7 @@ class PasswordResetLink
      */
     public static function send(string $email): string
     {
-        return Password::broker(Filament::getAuthPasswordBroker())->sendResetLink(
+        $status = Password::broker(Filament::getAuthPasswordBroker())->sendResetLink(
             ['email' => $email],
             function (CanResetPassword $user, string $token): void {
                 if (! method_exists($user, 'notifyNow')) {
@@ -29,5 +29,11 @@ class PasswordResetLink
                 $user->notifyNow($notification);
             },
         );
+
+        if ($status === Password::RESET_LINK_SENT) {
+            MailQuota::record();
+        }
+
+        return $status;
     }
 }

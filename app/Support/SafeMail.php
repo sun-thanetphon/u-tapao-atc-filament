@@ -16,6 +16,7 @@ class SafeMail
     {
         try {
             Mail::to($to)->send($mail);
+            MailQuota::record();
 
             return true;
         } catch (Throwable $e) {
