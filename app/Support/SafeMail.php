@@ -20,11 +20,12 @@ class SafeMail
 
             return true;
         } catch (Throwable $e) {
-            Log::warning('Failed to send mail', [
+            // ไม่บันทึกข้อความของ exception: ข้อความจาก transport อาจมีอีเมลผู้รับปนอยู่
+            Log::warning('Failed to send mail', array_filter([
                 'mailable' => $mail::class,
-                'to' => $to,
-                'error' => $e->getMessage(),
-            ]);
+                'exception' => $e::class,
+                'code' => $e->getCode(),
+            ]));
 
             return false;
         }

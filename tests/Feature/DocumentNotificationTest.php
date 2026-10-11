@@ -292,38 +292,130 @@ class DocumentNotificationTest extends TestCase
         Mail::assertNothingSent();
     }
 
-    public function test_send_failure_is_logged_without_addresses_and_does_not_throw(): void
+    /** @return array<int, array{0: string, 1: array}> */
+    protected function captureLogs(): \ArrayObject
+    {
+        $logs = new \ArrayObject();
+        Log::listen(fn ($event) => $logs->append([$event->level, $event->message, $event->context]));
+
+        return $logs;
+    }
+
+    protected function assertNoAddressInLogs(\ArrayObject $logs): void
+    {
+        $this->assertNotEmpty($logs->getArrayCopy());
+        foreach ($logs as [$level, $message, $context]) {
+            $this->assertStringNotContainsString('@', $message . json_encode($context, JSON_UNESCAPED_UNICODE), "log [$level] $message leaks an address");
+        }
+    }
+
+    public function test_total_send_failure_releases_the_claim_so_it_can_be_retried(): void
     {
         $this->recipient('ADC', 'secret.person@example.test');
         $document = $this->publishedDoc();
-        Log::spy();
-        Event::listen(MessageSending::class, fn () => throw new \RuntimeException('smtp down'));
+        $logs = $this->captureLogs();
+        $listener = Event::listen(MessageSending::class, fn () => throw new \RuntimeException('smtp down secret.person@example.test'));
 
         $this->notifier()->notify($document, true);
         $this->deliverDeferred();
 
         $this->assertSame(0, MailQuota::used());
+        $this->assertNull($document->fresh()->notified_at);
+        $errors = collect($logs)->where(0, 'error');
+        $this->assertCount(1, $errors);
+        $context = $errors->first()[2];
+        $this->assertSame(['document_id' => $document->id, 'recipients' => 1, 'chunks' => 1, 'sent_chunks' => 0, 'released' => true], $context);
+        $this->assertEmpty(collect($logs)->where(1, 'Document notification sent'));
+        $this->assertNoAddressInLogs($logs);
+
+        // ส่งใหม่ได้เมื่อ SMTP กลับมาใช้ได้
+        Event::forget(MessageSending::class);
+        Mail::fake();
+        $this->notifier()->notify(Document::find($document->id), true);
+        app()->terminate();
         $this->assertNotNull($document->fresh()->notified_at);
-        Log::shouldHaveReceived('error')->once()->withArgs(function ($message, $context = []) use ($document) {
-            return str_contains($message, 'Document notification')
-                && $context['document_id'] === $document->id
-                && $context['sent_chunks'] === 0
-                && ! str_contains(json_encode($context), '@');
-        });
+        Mail::assertSent(NewDocumentMail::class);
     }
 
-    public function test_unexpected_exception_in_deferred_send_is_swallowed_and_logged(): void
+    public function test_partial_failure_keeps_the_claim_and_logs_unsent_count(): void
+    {
+        collect(range(1, 100))->each(fn () => $this->recipient('ADC'));
+        $document = $this->publishedDoc();
+        $logs = $this->captureLogs();
+        $calls = 0;
+        Event::listen(MessageSending::class, function () use (&$calls) {
+            if (++$calls === 2) {
+                throw new \RuntimeException('smtp down');
+            }
+        });
+
+        $this->notifier()->notify($document, true);
+        $this->deliverDeferred();
+
+        $this->assertNotNull($document->fresh()->notified_at); // ปล่อยแล้วส่งซ้ำจะส่งซ้ำให้คนที่ได้ไปแล้ว
+        $this->assertSame(1, MailQuota::used());
+        $info = collect($logs)->where(1, 'Document notification sent')->first();
+        $this->assertSame(
+            ['document_id' => $document->id, 'recipients' => 100, 'chunks' => 2, 'sent_chunks' => 1, 'released' => false, 'unsent_recipients' => 6],
+            $info[2],
+        );
+        $this->assertNoAddressInLogs($logs);
+    }
+
+    public function test_exception_building_the_message_is_swallowed_releases_claim_and_logs_no_address(): void
     {
         $this->recipient('ADC');
         $document = $this->publishedDoc();
-        Log::spy();
-        Mail::shouldReceive('to')->andThrow(new \LogicException('boom secret.person@example.test'));
+        $logs = $this->captureLogs();
+        app()->bind(NewDocumentMail::class, fn () => throw new \LogicException('boom secret.person@example.test'));
 
         $this->notifier()->notify($document, true);
         $this->deliverDeferred(); // ต้องไม่โยนออกมา
 
-        Log::shouldHaveReceived('error')->withArgs(fn ($message, $context = []) => ($context['document_id'] ?? null) === $document->id
-            && ! str_contains(json_encode($context), '@'));
+        $this->assertNull($document->fresh()->notified_at);
+        $this->assertNotEmpty(collect($logs)->where(0, 'error')->all());
+        $this->assertNoAddressInLogs($logs);
+    }
+
+    public function test_transport_exception_message_with_an_address_is_never_logged(): void
+    {
+        $this->recipient('ADC', 'secret.person@example.test');
+        $document = $this->publishedDoc();
+        $logs = $this->captureLogs();
+        Event::listen(MessageSending::class, fn () => throw new \RuntimeException('boom secret.person@example.test'));
+
+        $this->notifier()->notify($document, true);
+        $this->deliverDeferred();
+
+        $warning = collect($logs)->where(1, 'Failed to send mail')->first();
+        $this->assertNotNull($warning);
+        $this->assertSame(\RuntimeException::class, $warning[2]['exception']);
+        $this->assertArrayNotHasKey('error', $warning[2]);
+        $this->assertArrayNotHasKey('to', $warning[2]);
+        $this->assertNoAddressInLogs($logs);
+    }
+
+    public function test_invalid_addresses_are_skipped_and_counted(): void
+    {
+        Mail::fake();
+        $good = $this->recipient('ADC');
+        $this->recipient('ADC', 'not an address');
+        $this->recipient('ADC', 'missing-at.example.test');
+        $document = $this->publishedDoc();
+
+        $this->notifier()->notify($document, true);
+        $this->deliverDeferred();
+
+        $this->assertSame([$good->email], $this->bccOf($this->sentMails()[0]));
+        $this->assertContains('จะส่งอีเมลแจ้งผู้ใช้ 1 คน (0 คนไม่มีอีเมล, 2 คนอีเมลไม่ถูกต้อง)', $this->titles());
+    }
+
+    public function test_quota_check_fails_closed_when_cache_cannot_be_read(): void
+    {
+        \Illuminate\Support\Facades\Cache::shouldReceive('get')->andThrow(new \RuntimeException('cache down'));
+
+        $this->assertFalse(MailQuota::canUse(1, 60));
+        $this->assertSame(0, MailQuota::used());
     }
 
     public function test_info_log_has_counts_only(): void
@@ -341,6 +433,8 @@ class DocumentNotificationTest extends TestCase
             'recipients' => 1,
             'chunks' => 1,
             'sent_chunks' => 1,
+            'released' => false,
+            'unsent_recipients' => 0,
         ]);
     }
 
@@ -401,6 +495,35 @@ class DocumentNotificationTest extends TestCase
         $document = $this->publishedDoc();
         $this->assertNull($document->fresh()->notified_at);
         $this->assertNotContains('notified_at', (new Document())->getFillable());
+    }
+
+    public function test_migration_backfills_published_documents_only_and_is_idempotent(): void
+    {
+        $published = $this->publishedDoc();
+        $draft = $this->publishedDoc(['publish' => false]);
+        $createdAt = '2026-01-05 08:00:00';
+        \Illuminate\Support\Facades\DB::table('documents')->whereIn('id', [$published->id, $draft->id])->update(['created_at' => $createdAt]);
+
+        $migration = require database_path('migrations/2026_10_11_000001_add_notified_at_to_documents_table.php');
+        $migration->up();
+        $migration->up();
+
+        $this->assertSame($createdAt, $published->fresh()->notified_at->format('Y-m-d H:i:s'));
+        $this->assertNull($draft->fresh()->notified_at);
+    }
+
+    public function test_send_checkbox_defaults_off_on_edit_and_on_for_create(): void
+    {
+        $this->admin();
+        $draft = $this->publishedDoc(['publish' => false]);
+
+        Livewire::test(ListDocuments::class)
+            ->mountTableAction('edit', $draft)
+            ->assertFormSet(['send_notification' => false], 'mountedTableActionForm');
+
+        Livewire::test(ListDocuments::class)
+            ->mountAction(CreateAction::class)
+            ->assertFormSet(['send_notification' => true], 'mountedActionForm');
     }
 
     // ---- ผ่านฟอร์มจริง (modal บนหน้ารายการเอกสาร) ----
@@ -522,6 +645,7 @@ class DocumentNotificationTest extends TestCase
         $this->deliverDeferred();
 
         Mail::assertNothingSent();
+        $this->assertTrue($document->fresh()->publish);
         $this->assertNull($document->fresh()->notified_at);
     }
 }

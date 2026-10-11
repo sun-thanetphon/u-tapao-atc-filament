@@ -95,7 +95,8 @@ class DocumentResource extends Resource
                         Forms\Components\Toggle::make('send_notification')
                             ->label('ส่งอีเมลแจ้งเตือนผู้ที่ต้องรับทราบ')
                             ->helperText('ส่งครั้งเดียวเมื่อเผยแพร่เอกสารที่ต้องรับทราบ ถ้าไม่ติ๊กตอนนี้ ยังติ๊กส่งภายหลังจากหน้าแก้ไขได้')
-                            ->default(true)
+                            // หน้าสร้างติ๊กไว้ให้ ส่วนหน้าแก้ไขต้องติ๊กเอง กันส่งอีเมลโดยไม่ตั้งใจ
+                            ->default(fn (?Document $record): bool => $record === null)
                             // ไม่ใช่คอลัมน์ในฐานข้อมูล: อ่านค่าจากฟอร์มหลังบันทึกแทน
                             ->dehydrated(false)
                             // ส่งแล้วจะไม่ส่งซ้ำอีก

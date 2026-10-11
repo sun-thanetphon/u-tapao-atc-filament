@@ -39,7 +39,12 @@ class MailQuota
 
     public static function canUse(int $messages, int $cap): bool
     {
-        return self::used() + $messages <= $cap;
+        // ตรวจโควตาไม่ได้ให้ถือว่าไม่เหลือ (ปลอดภัยกว่าส่งเกิน)
+        try {
+            return (int) Cache::get(self::key(), 0) + $messages <= $cap;
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     private static function key(): string
