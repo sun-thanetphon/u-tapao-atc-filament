@@ -30,7 +30,7 @@ class DocumentCategoryBrowseTest extends TestCase
         $this->assertSame('Work Instruction', CategoryStyle::fullName('WI (Work Instruction)'));
         $this->assertSame('ICAO-Annexes', CategoryStyle::badge('ICAO-Annexes'));
         $this->assertNull(CategoryStyle::fullName('ICAO-Annexes'));
-        $this->assertSame('อื่น ๆ', CategoryStyle::badge(null));
+        $this->assertSame('Other', CategoryStyle::badge(null));
         $this->assertSame('A (x)', CategoryStyle::badge('A (x) (y)'));
         $this->assertSame('y', CategoryStyle::fullName('A (x) (y)'));
         $this->assertSame(9, CategoryStyle::tone(null));
@@ -156,7 +156,7 @@ class DocumentCategoryBrowseTest extends TestCase
     {
         $this->actingAs($this->makeUser($this->section('ADC')));
 
-        $component = Livewire::test(ListDocumentTasks::class)->assertSee('ทุกประเภท');
+        $component = Livewire::test(ListDocumentTasks::class)->assertSee('All');
 
         $this->assertArrayNotHasKey('category_id', $component->instance()->getTable()->getFilters());
     }

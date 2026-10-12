@@ -243,8 +243,8 @@ class DocumentTaskResource extends Resource
 
         $cards = [[
             'key' => null,
-            'badge' => 'ทั้งหมด',
-            'full' => 'ทุกประเภท',
+            'badge' => 'All',
+            'full' => null,
             'tone' => 9,
             'total' => (int) $totals->sum(),
             'pending' => (int) $pendings->sum(),
@@ -269,8 +269,8 @@ class DocumentTaskResource extends Resource
         if ($totals->has('')) {
             $cards[] = [
                 'key' => 'none',
-                'badge' => 'อื่น ๆ',
-                'full' => 'ไม่ระบุประเภท',
+                'badge' => 'Other',
+                'full' => null,
                 'tone' => 9,
                 'total' => (int) $totals->get(''),
                 'pending' => (int) $pendings->get(''),

@@ -14,7 +14,7 @@ class CategoryStyle
     public static function badge(?string $name): string
     {
         if (blank($name)) {
-            return 'อื่น ๆ';
+            return 'Other';
         }
 
         return trim(preg_replace('/\s*\([^()]*\)\s*$/u', '', $name)) ?: $name;
