@@ -53,6 +53,8 @@ class FollowDocument extends Page implements HasTable
 
     public function mount(int | string $record): void
     {
+        abort_unless(auth()->user()->hasRole(RoleEnum::SUPERADMIN), 403);
+
         $this->record = $this->resolveRecord($record);
     }
 

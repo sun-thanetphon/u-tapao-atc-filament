@@ -1159,8 +1159,13 @@
 .uta-strip[data-status="mid"] { --uta-strip-color: var(--uta-amber); }
 .uta-strip[data-status="high"] { --uta-strip-color: var(--uta-sky); }
 
-.uta-strip:hover {
+a.uta-strip:hover {
     box-shadow: 0 0 0 1px rgb(var(--primary-300)), 0 4px 12px rgb(16 24 40 / 0.08);
+}
+
+/* แถบที่ไม่มีลิงก์ (ผู้ใช้ที่ไม่ใช่ super-admin) ดูได้อย่างเดียว */
+.uta-strip--static {
+    cursor: default;
 }
 
 .uta-strip:focus-visible {

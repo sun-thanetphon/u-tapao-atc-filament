@@ -15,7 +15,10 @@
             <ol class="uta-strips">
                 @foreach ($strips as $strip)
                     <li>
-                        <a href="{{ $strip['url'] }}" class="uta-strip" data-status="{{ $strip['status'] }}">
+                        <{{ $strip['url'] ? 'a' : 'div' }}
+                            @if ($strip['url']) href="{{ $strip['url'] }}" @endif
+                            class="uta-strip {{ $strip['url'] ? '' : 'uta-strip--static' }}"
+                            data-status="{{ $strip['status'] }}">
                             <span class="uta-strip-id">
                                 <span class="uta-strip-code">{{ $strip['code'] }}</span>
                                 <span class="uta-strip-sections">
@@ -33,7 +36,7 @@
                             </span>
 
                             <span class="uta-strip-rate">{{ number_format($strip['rate'] * 100) }}%</span>
-                        </a>
+                        </{{ $strip['url'] ? 'a' : 'div' }}>
                     </li>
                 @endforeach
             </ol>

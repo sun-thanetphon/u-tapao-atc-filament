@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Enums\PermissionEnum;
+use App\Enums\RoleEnum;
 use App\Filament\Resources\DocumentResource\Pages;
 use App\Filament\Resources\DocumentResource\RelationManagers;
 use App\Models\Document;
@@ -198,7 +199,7 @@ class DocumentResource extends Resource
                     Tables\Actions\Action::make('follow')
                         ->icon('heroicon-o-arrow-trending-up')
                         ->hidden(function ($record) {
-                            return !$record->isNeedToAck();
+                            return !auth()->user()->hasRole(RoleEnum::SUPERADMIN) || !$record->isNeedToAck();
                         })
                         ->label('ติดตามการรับทราบ')
                         ->url(fn(Document $record): string => route('filament.admin.resources.documents.follow', $record)),

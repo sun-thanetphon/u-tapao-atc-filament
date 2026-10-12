@@ -6,6 +6,7 @@ use App\Enums\RoleEnum;
 use App\Filament\Resources\DocumentResource\Pages\FollowDocument;
 use App\Filament\Resources\DocumentTaskResource;
 use App\Filament\Resources\DocumentTaskResource\Pages\ListDocumentTasks;
+use App\Filament\Widgets\PendingAcknowledgeBoard;
 use App\Support\AcknowledgeStats;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -83,17 +84,29 @@ class ForceAcknowledgeTest extends TestCase
         $this->assertSame(1, $stats->done());
     }
 
-    public function test_only_super_admin_sees_the_force_button(): void
+    public function test_admin_cannot_open_the_follow_page(): void
     {
         $admin = $this->makeUser($this->section('APP'), RoleEnum::ADMIN);
-        $member = $this->makeUser($this->section('ADC'));
         $document = $this->makeDocument([$this->section('ADC')], [$this->section('ADC')]);
 
-        $this->actingAs($admin);
+        $this->actingAs($admin)
+            ->get("/admin/documents/{$document->id}/follow")
+            ->assertForbidden();
+    }
 
-        Livewire::test(FollowDocument::class, ['record' => $document->id])
-            ->assertCanSeeTableRecords([$member])
-            ->assertTableActionHidden('supervisorAck', $member);
+    public function test_dashboard_strips_link_to_follow_page_only_for_super_admin(): void
+    {
+        $document = $this->makeDocument([$this->section('ADC')], [$this->section('ADC')]);
+        $this->makeUser($this->section('ADC'));
+
+        $this->actingAs($this->makeUser($this->section('APP'), RoleEnum::SUPERADMIN));
+        Livewire::test(PendingAcknowledgeBoard::class)
+            ->assertSeeHtml("/documents/{$document->id}/follow");
+
+        $this->actingAs($this->makeUser($this->section('APP'), RoleEnum::ADMIN));
+        Livewire::test(PendingAcknowledgeBoard::class)
+            ->assertSee($document->code)
+            ->assertDontSeeHtml("/documents/{$document->id}/follow");
     }
 
     public function test_regular_user_cannot_open_the_follow_page(): void

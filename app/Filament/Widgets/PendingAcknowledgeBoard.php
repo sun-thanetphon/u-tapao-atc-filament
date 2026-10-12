@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\RoleEnum;
 use App\Filament\Resources\DocumentResource;
 use App\Support\AcknowledgeStats;
 use Filament\Widgets\Widget;
@@ -20,6 +21,7 @@ class PendingAcknowledgeBoard extends Widget
     {
         $stats = AcknowledgeStats::get();
         $pending = $stats->pending();
+        $canFollow = auth()->user()->hasRole(RoleEnum::SUPERADMIN);
 
         return [
             'strips' => $pending->take(6)->map(fn (array $document) => [
@@ -30,7 +32,9 @@ class PendingAcknowledgeBoard extends Widget
                     $document['rate'] < 0.8 => 'mid',
                     default => 'high',
                 },
-                'url' => DocumentResource::getUrl('follow', ['record' => $document['id']]),
+                'url' => $canFollow
+                    ? DocumentResource::getUrl('follow', ['record' => $document['id']])
+                    : null,
             ]),
             'remaining' => max(0, $pending->count() - 6),
             'allUrl' => DocumentResource::getUrl('index'),
