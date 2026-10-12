@@ -6,6 +6,7 @@ use App\Enums\PermissionEnum;
 use App\Filament\Resources\DocumentTaskResource\Pages;
 use App\Models\Document;
 use App\Models\DocumentCategory;
+use App\Support\CategoryStyle;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -112,12 +113,17 @@ class DocumentTaskResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => static::visibleQuery($query)
+            ->modifyQueryUsing(fn (Builder $query, $livewire) => static::visibleQuery($query)
                 ->with([
                     'category:id,name',
                     // โหลดเฉพาะการรับทราบของผู้ใช้ปัจจุบัน
                     'acknowledges' => fn ($query) => $query->where('user_id', auth()->id()),
-                ]))
+                ])
+                ->tap(fn (Builder $query) => static::whereCategory($query, $livewire->activeCategory())))
+            ->header(fn ($livewire) => view('filament.tables.document-task-categories', [
+                'cards' => $livewire->categoryCards(),
+                'active' => $livewire->activeCategory(),
+            ]))
             ->defaultSort('created_at', 'desc')
             ->recordClasses(fn (Document $record) => 'uta-task uta-task-' . static::statusFor($record))
             ->columns([
@@ -127,15 +133,18 @@ class DocumentTaskResource extends Resource
                             ->label('ชื่อเอกสาร')
                             ->weight(FontWeight::Medium)
                             ->wrap()
-                            ->searchable(),
-                        Tables\Columns\TextColumn::make('code')
-                            ->label('รหัส')
-                            ->color('gray')
-                            ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
+                            // ค้นหาด้วยรหัสเอกสารได้ แม้ไม่ได้แสดงในรายการ
+                            ->searchable(['name', 'code']),
+                        Tables\Columns\TextColumn::make('category_label')
+                            ->label('ประเภท')
+                            ->getStateUsing(fn (Document $record) => $record->category?->name ?? 'none')
                             ->formatStateUsing(fn (Document $record) => new HtmlString(
-                                e($record->code) . ($record->category ? '<span class="uta-task-category">' . e($record->category->name) . '</span>' : '')
-                            ))
-                            ->searchable(),
+                                '<span class="uta-cat-badge uta-cat-tone-' . CategoryStyle::tone($record->category_id) . '">'
+                                . e(CategoryStyle::badge($record->category?->name)) . '</span>'
+                                . (CategoryStyle::fullName($record->category?->name)
+                                    ? ' <span class="uta-task-category">' . e(CategoryStyle::fullName($record->category->name)) . '</span>'
+                                    : '')
+                            )),
                     ])->space(1),
 
                     Tables\Columns\TextColumn::make('status')
@@ -160,14 +169,6 @@ class DocumentTaskResource extends Resource
                         }),
                 ])->from('md'),
             ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('category_id')
-                    ->label('ประเภทเอกสาร')
-                    ->multiple()
-                    ->preload()
-                    ->searchable()
-                    ->options(fn () => DocumentCategory::query()->pluck('name', 'id')),
-            ])
             ->actions([
                 Tables\Actions\Action::make('viewPdf')
                     ->url(function (Document $record) {
@@ -191,11 +192,12 @@ class DocumentTaskResource extends Resource
                     ->modalDescription('คุณยืนยันว่าได้อ่านและรับทราบเอกสารนี้แล้ว การกด "รับทราบ" ถือเป็นการยอมรับข้อกำหนดและเงื่อนไขทั้งหมดในเอกสารนี้')
                     ->modalSubmitActionLabel('รับทราบ')
                     ->modalCancelActionLabel('ยกเลิก')
-                    ->action(function (Document $record) {
+                    ->action(function (Document $record, $livewire) {
                         $record->acknowledges()->firstOrCreate(
                             ['user_id' => auth()->id()],
                             ['acknowledge_date' => now()],
                         );
+                        $livewire->forgetCategoryCards();
 
                         Notification::make()
                             ->title('รับทราบเอกสารแล้ว')
@@ -213,6 +215,69 @@ class DocumentTaskResource extends Resource
             ->emptyStateHeading('ไม่มีเอกสารในรายการนี้')
             ->emptyStateDescription('เอกสารที่แผนกของคุณต้องอ่านหรือรับทราบจะแสดงที่นี่')
             ->paginated([10, 25, 50]);
+    }
+
+    /**
+     * กรองตามประเภทที่เลือก: null = ทั้งหมด, 'none' = ไม่มีประเภท, นอกนั้นเป็น id ของประเภท
+     */
+    public static function whereCategory(Builder $query, ?string $category): Builder
+    {
+        return match (true) {
+            blank($category) => $query,
+            $category === 'none' => $query->whereNull('category_id'),
+            default => $query->where('category_id', (int) $category),
+        };
+    }
+
+    /**
+     * การ์ดเลือกประเภท: ทั้งหมด + ทุกประเภทที่ผู้ใช้เห็น + อื่น ๆ (ไม่มีประเภท) พร้อมจำนวนที่รอรับทราบ
+     *
+     * @return array<int, array{key: ?string, badge: string, full: ?string, tone: int, total: int, pending: int}>
+     */
+    public static function categoryCards(): array
+    {
+        $count = fn (Builder $query) => $query->reorder()->selectRaw('category_id, count(*) as total')->groupBy('category_id')->pluck('total', 'category_id');
+
+        $totals = $count(static::visibleQuery(Document::query()));
+        $pendings = $count(static::pendingQuery(Document::query()));
+
+        $cards = [[
+            'key' => null,
+            'badge' => 'ทั้งหมด',
+            'full' => 'ทุกประเภท',
+            'tone' => 9,
+            'total' => (int) $totals->sum(),
+            'pending' => (int) $pendings->sum(),
+        ]];
+
+        foreach (DocumentCategory::query()->orderBy('name')->get(['id', 'name']) as $category) {
+            if (! $totals->has($category->id)) {
+                continue;
+            }
+
+            $cards[] = [
+                'key' => (string) $category->id,
+                'badge' => CategoryStyle::badge($category->name),
+                'full' => CategoryStyle::fullName($category->name),
+                'tone' => CategoryStyle::tone($category->id),
+                'total' => (int) $totals[$category->id],
+                'pending' => (int) ($pendings[$category->id] ?? 0),
+            ];
+        }
+
+        // เอกสารที่ไม่มีประเภท (category_id เป็น null)
+        if ($totals->has('')) {
+            $cards[] = [
+                'key' => 'none',
+                'badge' => 'อื่น ๆ',
+                'full' => 'ไม่ระบุประเภท',
+                'tone' => 9,
+                'total' => (int) $totals->get(''),
+                'pending' => (int) $pendings->get(''),
+            ];
+        }
+
+        return $cards;
     }
 
     private static function thaiDate($date): string
