@@ -21,3 +21,13 @@ Route::get('/storage/{folder}/{path}', function ($folder, $path) {
     }
     return redirect()->intended('admin');
 })->name('view.pdf');
+
+// หน้ารายงานผู้รับทราบเอกสารสำหรับพิมพ์/บันทึกเป็น PDF (เฉพาะ super-admin เหมือนหน้าติดตาม)
+Route::get('/documents/{document}/follow/print', function (\App\Models\Document $document) {
+    abort_unless(Auth::check() && Auth::user()->hasRole(\App\Enums\RoleEnum::SUPERADMIN), 403);
+
+    return view('exports.follow-print', [
+        'document' => $document,
+        'users' => (new \App\Exports\FollowExport($document))->users(),
+    ]);
+})->middleware('web')->name('follow.print');

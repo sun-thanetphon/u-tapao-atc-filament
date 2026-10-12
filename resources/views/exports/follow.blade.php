@@ -1,29 +1,19 @@
 <table>
     <thead>
         <tr>
-            <th colspan="5" style="justify-self: center">({{ $document->code }}) {{ $document->name }}</th>
-        </tr>
-        <tr>
-            <th>#</th>
+            <th>ชื่อเอกสาร</th>
+            <th>ชื่อผู้รับทราบ</th>
             <th>แผนก</th>
-            <th>ชื่อ-สกุล</th>
-            <th>สถานะ</th>
-            <th>เวลา</th>
+            <th>วันที่</th>
         </tr>
     </thead>
     <tbody>
-
-        @foreach ($users as $index => $user)
+        @foreach ($users as $user)
             <tr>
-                <td>{{ $index + 1 }}</td>
-                <td>{{ $user->section->prefix }}</td>
+                <td>{{ $document->name }}</td>
                 <td>{{ $user->getFullName() }}</td>
-                <td>
-                    {{ $user->isAcknowledged($document->id) ? 'รับทราบแล้ว' : 'ยังไม่รับทราบ' }}
-                </td>
-                <td>
-                    {{ $user->acknowledgeDateForDocument($document->id) ?? '-' }}
-                </td>
+                <td>{{ $user->section->prefix }}</td>
+                <td>{{ \Carbon\Carbon::parse($user->acknowledges->firstWhere('document_id', $document->id)->acknowledge_date)->format('d-m-Y') }}</td>
             </tr>
         @endforeach
     </tbody>

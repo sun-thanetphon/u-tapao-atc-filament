@@ -81,8 +81,11 @@ class PagesTest extends TestCase
             ->assertSee('ความคืบหน้าตามแผนก')
             ->assertSee('รับทราบล่าสุด');
 
-        foreach (['/admin/home', '/admin/document-tasks', '/admin/documents', '/admin/document-categories', '/admin/public-urls', '/admin/service', '/admin/users', "/admin/documents/{$document->id}/follow"] as $url) {
+        foreach (['/admin/home', '/admin/document-tasks', '/admin/documents', '/admin/document-categories', '/admin/public-urls', '/admin/service', '/admin/users'] as $url) {
             $this->get($url)->assertOk();
         }
+
+        // หน้าติดตามการรับทราบเปิดได้เฉพาะ super-admin
+        $this->get("/admin/documents/{$document->id}/follow")->assertForbidden();
     }
 }

@@ -71,7 +71,13 @@ class FollowDocument extends Page implements HasTable
                     })
                     ->label('Export Excel')
                     ->icon('heroicon-o-arrow-up-tray')
-                    ->color('success')
+                    ->color('success'),
+                Action::make('pdf')
+                    ->label('Export PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('danger')
+                    ->url(fn () => route('follow.print', $this->record))
+                    ->openUrlInNewTab(),
             ])
             ->columns([
                 TextColumn::make('section.name'),
