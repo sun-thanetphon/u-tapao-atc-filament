@@ -35,7 +35,13 @@ class FileAccessTest extends TestCase
         $this->adcDocument();
         $this->actingAs($this->makeUser($this->section('ADC')));
 
-        $this->get('/storage/documents/adc.pdf')->assertOk()->assertSee('%PDF-adc', false);
+        $response = $this->get('/storage/documents/adc.pdf')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf')
+            // ไม่มี Content-Length แล้ว CDN ของ Hostinger ส่ง PDF ค้างกลางทาง
+            ->assertHeader('Content-Length', (string) strlen('%PDF-adc'));
+
+        $this->assertSame('%PDF-adc', file_get_contents($response->baseResponse->getFile()->getPathname()));
     }
 
     public function test_user_in_another_section_cannot_open_the_document(): void

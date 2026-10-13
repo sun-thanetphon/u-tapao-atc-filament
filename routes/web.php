@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
@@ -21,9 +20,10 @@ Route::get('/storage/{folder}/{path}', function ($folder, $path) {
         if (!$documents->where('file_path', $filePath)->exists() || !Storage::disk('local')->exists($filePath)) {
             abort(404);
         }
-        $file = Storage::disk('local')->get($filePath);
-        $mimeType = Storage::disk('local')->mimeType($filePath);
-        return Response::make($file, 200)->header("Content-Type", $mimeType);
+        // ส่งเป็นไฟล์ให้มี Content-Length และรองรับ Range ไม่งั้น CDN ของ Hostinger ส่ง PDF ค้างกลางทาง
+        return response()->file(Storage::disk('local')->path($filePath), [
+            'Content-Type' => Storage::disk('local')->mimeType($filePath),
+        ]);
     }
     return redirect()->intended('admin');
 })->name('view.pdf');
