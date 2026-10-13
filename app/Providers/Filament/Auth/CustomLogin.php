@@ -3,6 +3,7 @@
 namespace App\Providers\Filament\Auth;
 
 use App\Enums\UserStatus;
+use App\Models\User;
 use Filament\Pages\Auth\Login;
 use Filament\Forms\Components\Component;
 use Filament\Forms\Components\TextInput;
@@ -40,7 +41,16 @@ class CustomLogin extends Login
         $data = $this->form->getState();
 
         if (! Filament::auth()->attempt($this->getCredentialsFromFormData($data), $data['remember'] ?? false)) {
-            $this->throwFailureValidationException();
+            // แยกข้อความให้ผู้ใช้รู้ว่าผิดที่ username หรือรหัสผ่าน (มี rateLimit ด้านบนกันการไล่เดา username)
+            if (! User::where('username', $data['username'])->exists()) {
+                throw ValidationException::withMessages([
+                    'data.username' => 'ไม่พบ username นี้ในระบบ',
+                ]);
+            }
+
+            throw ValidationException::withMessages([
+                'data.password' => 'รหัสผ่านไม่ถูกต้อง',
+            ]);
         }
 
         $user = Filament::auth()->user();
