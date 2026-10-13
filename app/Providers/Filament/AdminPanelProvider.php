@@ -75,6 +75,18 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn(): HtmlString => new HtmlString('<style>' . file_get_contents(resource_path('css/filament-theme.css')) . '</style>'),
             )
+            // Filament จำสถานะเมนูข้างเป็น "เปิด" ไว้ตั้งแต่แรก บนมือถือเมนูจึงเปิดทับเนื้อหาทุกครั้งที่โหลดหน้า ให้ปิดไว้ก่อน
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn(): HtmlString => new HtmlString(<<<'HTML'
+                    <script>
+                        (() => {
+                            const close = () => window.matchMedia('(max-width: 1023px)').matches && Alpine.store('sidebar').close();
+                            window.Alpine?.store?.('sidebar') ? close() : document.addEventListener('alpine:initialized', close);
+                        })();
+                    </script>
+                    HTML),
+            )
             ->userMenuItems([
                 'profile' => MenuItem::make()->label('Change password')
                     ->icon('heroicon-o-key'),
