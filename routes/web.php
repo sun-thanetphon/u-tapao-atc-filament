@@ -9,10 +9,16 @@ Route::get('/', function () {
     return redirect('/admin');
 });
 
+// เปิดได้เฉพาะ PDF ของเอกสาร: ผู้จัดการเอกสารเปิดได้ทุกฉบับ ผู้ใช้ทั่วไปเปิดได้เฉพาะฉบับที่แผนกตัวเองเห็น
+// ไฟล์อื่นใน storage (เช่น email-imports, livewire-tmp) ตอบ 404 เสมอ
 Route::get('/storage/{folder}/{path}', function ($folder, $path) {
     if (Auth::check()) {
         $filePath = $folder . '/' . $path;
-        if (!Storage::disk('local')->exists($filePath)) {
+        $documents = \App\Filament\Resources\DocumentResource::canAccess()
+            ? \App\Models\Document::query()
+            : \App\Filament\Resources\DocumentTaskResource::visibleQuery(\App\Models\Document::query());
+
+        if (!$documents->where('file_path', $filePath)->exists() || !Storage::disk('local')->exists($filePath)) {
             abort(404);
         }
         $file = Storage::disk('local')->get($filePath);
