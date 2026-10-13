@@ -56,11 +56,12 @@ class LoginStatusTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_wrong_password_for_pending_user_only_shows_generic_failure(): void
+    public function test_wrong_password_for_pending_user_only_shows_wrong_password(): void
     {
+        // รหัสผิดบอกแค่ว่ารหัสผิด ไม่บอกสถานะบัญชีให้คนที่ไม่รู้รหัสเห็น
         $this->attempt($this->userWithStatus(UserStatus::PENDING), 'wrong-password')
-            ->assertHasFormErrors(['username'])
-            ->assertSee(__('filament-panels::pages/auth/login.messages.failed'))
+            ->assertHasFormErrors(['password'])
+            ->assertSee('รหัสผ่านไม่ถูกต้อง')
             ->assertDontSee('รอการอนุมัติ')
             ->assertDontSee('ไม่ได้รับการอนุมัติ');
 
