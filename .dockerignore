@@ -1,0 +1,5 @@
+# Dockerfile ไม่มี COPY ไฟล์โปรเจกต์เข้า image (โค้ดถูก mount ผ่าน docker-compose)
+# จึงไม่ต้องส่งอะไรเข้า build context เลย ช่วยให้ build เร็ว และไม่เอา .env เข้าไปโดยบังเอิญ
+# ถ้าวันหน้าเพิ่ม COPY ไฟล์ไหนใน Dockerfile ให้เพิ่ม !ชื่อไฟล์ ไว้ใต้บรรทัดนี้
+*
+!Dockerfile
