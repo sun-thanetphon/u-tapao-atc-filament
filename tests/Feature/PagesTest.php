@@ -57,6 +57,17 @@ class PagesTest extends TestCase
         $this->get('/admin/dashboard')->assertOk();
     }
 
+    public function test_sidebar_starts_closed_on_mobile(): void
+    {
+        $this->actingAs($this->makeUser($this->section('ADC')));
+
+        // Filament จำสถานะเมนูข้างเป็น "เปิด" ไว้ตั้งแต่แรก บนมือถือเมนูจึงเปิดทับเนื้อหาทุกครั้งที่โหลดหน้า
+        $this->get('/admin/document-tasks')
+            ->assertOk()
+            ->assertSee("matchMedia('(max-width: 1023px)')", false)
+            ->assertSee("Alpine.store('sidebar').close()", false);
+    }
+
     public function test_regular_user_cannot_open_admin_resources(): void
     {
         $this->actingAs($this->makeUser($this->section('ADC')));

@@ -1647,6 +1647,8 @@ a.uta-strip:hover {
 }
 
 .uta-cat-pending {
+    display: inline-block;
+    white-space: nowrap;
     margin-left: 0.25rem;
     padding: 0.0625rem 0.5rem;
     border-radius: 999px;
@@ -1687,3 +1689,31 @@ a.uta-strip:hover {
 .uta-cat-tone-7 { background-color: #ecfccb; color: #365314; }
 .dark .uta-cat-tone-6 { background-color: rgb(249 115 22 / 0.25); color: #fed7aa; }
 .dark .uta-cat-tone-7 { background-color: rgb(132 204 22 / 0.25); color: #d9f99d; }
+
+/* มือถือ: การ์ดประเภทเป็นแถวเดียวปัดซ้ายขวา ไม่ดันรายการเอกสารลงไปเกือบสองจอ
+   การ์ดกว้างไม่เต็มแถว ใบถัดไปจึงโผล่มาให้เห็นว่ายังปัดต่อได้ */
+@media (max-width: 639px) {
+    .uta-cats {
+        grid-template-columns: none;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(8.5rem, 42%);
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scroll-snap-type: x mandatory;
+        scroll-padding-inline: 1rem;
+        scrollbar-width: none;
+    }
+
+    .uta-cats::-webkit-scrollbar {
+        display: none;
+    }
+
+    .uta-cat-card {
+        scroll-snap-align: start;
+    }
+
+    /* แท็บรอรับทราบ/รับทราบแล้ว/ทั้งหมด ต้องพอดีจอ ไม่ให้ "ทั้งหมด" ถูกตัด */
+    .fi-tabs-item-icon {
+        display: none;
+    }
+}
