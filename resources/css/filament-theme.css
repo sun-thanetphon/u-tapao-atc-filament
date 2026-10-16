@@ -1475,6 +1475,39 @@ a.uta-strip:hover {
     background-color: var(--uta-amber);
 }
 
+/* รอรับทราบ = สำคัญ: พื้นอมทอง ชื่อหนากว่าและสว่างกว่าแถวปกติ ป้ายสถานะเป็นสีทึบ */
+.fi-ta-record.uta-task-pending {
+    background-color: rgb(232 180 0 / 0.1);
+}
+
+.dark .fi-ta-record.uta-task-pending {
+    background-color: rgb(232 180 0 / 0.12);
+}
+
+.fi-ta-record.uta-task-pending::before {
+    width: 5px;
+}
+
+.fi-ta-record.uta-task-pending .fi-ta-text-item-label {
+    color: rgb(var(--gray-950));
+    font-weight: 600;
+}
+
+.dark .fi-ta-record.uta-task-pending .fi-ta-text-item-label {
+    color: #fff;
+}
+
+.fi-ta-record.uta-task-pending .fi-badge {
+    background-color: var(--uta-amber);
+    color: #1a1400;
+    font-weight: 600;
+    --tw-ring-color: transparent;
+}
+
+.fi-ta-record.uta-task-pending .fi-badge svg {
+    color: #1a1400;
+}
+
 .fi-ta-record.uta-task-acknowledged .fi-ta-text-item-label {
     color: rgb(var(--gray-600));
 }
@@ -1616,6 +1649,22 @@ a.uta-strip:hover {
 
 .dark .uta-cats {
     border-bottom-color: rgb(255 255 255 / 0.08);
+}
+
+/* จอกว้าง: เรียงการ์ดลงล่างก่อน แล้วขึ้นคอลัมน์ใหม่ทางขวา (1 2 3 4 | 5 6 7 8 ...) */
+@media (min-width: 640px) {
+    .uta-cats {
+        grid-auto-flow: column;
+        grid-template-columns: none;
+        grid-auto-columns: minmax(0, 1fr);
+        grid-template-rows: repeat(var(--uta-rows-3, 4), auto);
+    }
+}
+
+@media (min-width: 1280px) {
+    .uta-cats {
+        grid-template-rows: repeat(var(--uta-rows-5, 4), auto);
+    }
 }
 
 .uta-cat-card {

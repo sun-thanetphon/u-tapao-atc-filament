@@ -1,4 +1,5 @@
-<div class="uta-cats" role="group" aria-label="เลือกประเภทเอกสาร">
+{{-- การ์ดเรียงลงล่างก่อนแล้วขึ้นคอลัมน์ใหม่ทางขวา: CSS ใช้จำนวนแถวนี้ (5 คอลัมน์บนจอกว้าง 3 คอลัมน์บนจอกลาง) --}}
+<div class="uta-cats" role="group" aria-label="เลือกประเภทเอกสาร" style="--uta-rows-5: {{ (int) ceil(count($cards) / 5) }}; --uta-rows-3: {{ (int) ceil(count($cards) / 3) }}">
     @foreach ($cards as $card)
         <button
             type="button"

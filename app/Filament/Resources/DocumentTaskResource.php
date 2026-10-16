@@ -262,6 +262,48 @@ class DocumentTaskResource extends Resource
     }
 
     /**
+     * ลำดับการ์ดประเภท (เทียบกับป้ายสั้นของประเภท): ระบบคุณภาพ เอกสารสากล หน่วยงาน แล้วกฎของ กพท. ตามด้วย TCAR
+     * ประเภทที่ไม่อยู่ในลิสต์เรียงตามชื่อต่อท้าย และ "Others" อยู่ท้ายสุด
+     */
+    private const CATEGORY_ORDER = [
+        'QP', 'QM', 'SD', 'FM', 'WI',
+        'ICAO-Annexes', 'ICAO-Documents',
+        'Airport Authority', 'AVSEC',
+        'CAAT Regulation', 'CAAT Requirement', 'CAAT Rules', 'CAAT Announcement', 'CAAT AMC/GM', 'CAAT MOS', 'CAAT Draft', 'CAAT',
+        'TCAR',
+    ];
+
+    /**
+     * @return \Illuminate\Support\Collection<int, DocumentCategory>
+     */
+    public static function sortedCategories(): \Illuminate\Support\Collection
+    {
+        return DocumentCategory::query()->get(['id', 'name'])
+            ->sortBy(fn (DocumentCategory $category) => sprintf('%03d|%s', static::categoryRank($category->name), mb_strtolower($category->name)))
+            ->values();
+    }
+
+    private static function categoryRank(string $name): int
+    {
+        $badge = mb_strtolower(CategoryStyle::badge($name));
+
+        if ($badge === 'others') {
+            return 999;
+        }
+
+        foreach (self::CATEGORY_ORDER as $rank => $prefix) {
+            $prefix = mb_strtolower($prefix);
+
+            // ป้ายตรงกันทั้งคำ หรือขึ้นต้นด้วยคำนั้น (เช่น "TCAR - Air Navigation Services", "Airport Authority U-Tapao ...")
+            if ($badge === $prefix || str_starts_with($badge, $prefix . ' ') || str_starts_with($badge, $prefix . '-')) {
+                return $rank;
+            }
+        }
+
+        return 500;
+    }
+
+    /**
      * การ์ดเลือกประเภท: ทั้งหมด + ทุกประเภทที่ผู้ใช้เห็น + อื่น ๆ (ไม่มีประเภท) พร้อมจำนวนที่รอรับทราบ
      *
      * @return array<int, array{key: ?string, badge: string, full: ?string, tone: int, total: int, pending: int}>
@@ -282,7 +324,7 @@ class DocumentTaskResource extends Resource
             'pending' => (int) $pendings->sum(),
         ]];
 
-        foreach (DocumentCategory::query()->orderBy('name')->get(['id', 'name']) as $category) {
+        foreach (static::sortedCategories() as $category) {
             if (! $totals->has($category->id)) {
                 continue;
             }
