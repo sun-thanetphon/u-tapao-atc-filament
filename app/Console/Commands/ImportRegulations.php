@@ -54,8 +54,12 @@ class ImportRegulations extends Command
 
         $existing = Document::withTrashed()->where('category_id', $category->id)->pluck('name')->flip();
         $created = $skipped = 0;
+        $arabic = ['๐' => '0', '๑' => '1', '๒' => '2', '๓' => '3', '๔' => '4', '๕' => '5', '๖' => '6', '๗' => '7', '๘' => '8', '๙' => '9'];
 
         foreach ($entries as $entry) {
+            // ชื่อเอกสารใช้เลขอารบิกทั้งระบบ
+            $entry['name'] = strtr($entry['name'], $arabic);
+
             $source = $dir . '/' . $entry['file'];
 
             if (isset($existing[$entry['name']])) {
