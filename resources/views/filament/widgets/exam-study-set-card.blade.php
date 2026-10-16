@@ -1,36 +1,43 @@
 <x-filament-widgets::widget>
     <section class="uta-card uta-study">
-        <header class="uta-card-header">
+        <header class="uta-study-header">
             <x-filament::icon icon="heroicon-o-book-open" class="uta-card-icon" />
-            <div>
-                <h2 class="uta-card-title">{{ $title }}</h2>
-                <p class="uta-study-desc">{{ $description }}</p>
-            </div>
+            <h2 class="uta-card-title">{{ $title }}</h2>
+            <span class="uta-study-desc">{{ $description }}</span>
         </header>
 
+        {{-- หนึ่งวิชาหนึ่งบรรทัด: ชื่อวิชาเป็นลิงก์เปิดเอกสารแรก ถ้ามีหลายเอกสารจะมีลิงก์เล็กต่อท้าย --}}
         <ol class="uta-study-list">
             @foreach ($subjects as $subject)
+                @php($first = $subject['links']->first())
                 <li class="uta-study-item">
                     <span class="uta-study-no">{{ $loop->iteration }}</span>
-                    <div class="uta-study-body">
-                        <p class="uta-study-subject">{{ $subject['name'] }}</p>
-                        @forelse ($subject['links'] as $link)
+
+                    @if ($first)
+                        <a
+                            href="{{ $first['url'] }}"
+                            target="_blank"
+                            rel="noopener"
+                            class="uta-study-subject"
+                            title="{{ $first['label'] }}"
+                        >{{ $subject['name'] }}</a>
+                        @if (! empty($first['external']))
+                            <x-filament::icon icon="heroicon-m-arrow-top-right-on-square" class="uta-link-ext" />
+                        @endif
+
+                        @foreach ($subject['links']->skip(1) as $link)
                             <a
                                 href="{{ $link['url'] }}"
                                 target="_blank"
                                 rel="noopener"
-                                class="uta-study-link"
-                            >
-                                <span class="uta-study-link-name">{{ $link['label'] }}</span>
-                                <x-filament::icon
-                                    :icon="! empty($link['external']) ? 'heroicon-m-arrow-top-right-on-square' : 'heroicon-m-document-text'"
-                                    class="uta-link-ext"
-                                />
-                            </a>
-                        @empty
-                            <p class="uta-study-missing">ยังไม่มีในระบบ</p>
-                        @endforelse
-                    </div>
+                                class="uta-study-more"
+                                title="{{ $link['label'] }}"
+                            >ฉบับที่ {{ $loop->iteration + 1 }}</a>
+                        @endforeach
+                    @else
+                        <span class="uta-study-subject is-missing">{{ $subject['name'] }}</span>
+                        <span class="uta-study-more is-missing">ยังไม่มีในระบบ</span>
+                    @endif
                 </li>
             @endforeach
         </ol>
