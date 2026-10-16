@@ -33,6 +33,18 @@ class Document extends Model
         'notified_at' => 'datetime',
     ];
 
+    /**
+     * ชื่อไฟล์ PDF ตอนเปิดหรือเซฟ: ชื่อเอกสารที่ตัดอักขระซึ่งใช้เป็นชื่อไฟล์ไม่ได้ออกแล้ว
+     */
+    public function downloadName(): string
+    {
+        $name = preg_replace('/[\\\\\/:*?"<>|\x00-\x1F\x7F]+/u', ' ', (string) $this->name);
+        $name = trim(preg_replace('/\s+/u', ' ', $name), ' .');
+        $name = rtrim(mb_substr($name, 0, 120), ' .');
+
+        return ($name !== '' ? $name : $this->code) . '.pdf';
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creator_id');

@@ -44,6 +44,32 @@ class FileAccessTest extends TestCase
         $this->assertSame('%PDF-adc', file_get_contents($response->baseResponse->getFile()->getPathname()));
     }
 
+    public function test_the_pdf_is_named_after_the_document_not_the_stored_file(): void
+    {
+        $this->adcDocument(['code' => 'D2610/0001', 'name' => 'WI-ATS.ATCD-008 วิธีปฏิบัติ: NOTAM / AIP "Supplement"?']);
+        $this->actingAs($this->makeUser($this->section('ADC')));
+
+        $disposition = $this->get('/storage/documents/adc.pdf')->assertOk()->headers->get('Content-Disposition');
+
+        $this->assertStringStartsWith('inline;', $disposition);
+        // ชื่อไทยอยู่ใน filename* (UTF-8) ส่วน filename เป็นชื่อสำรอง ASCII จากรหัสเอกสาร
+        $this->assertStringContainsString('filename=D2610_0001.pdf', $disposition);
+        $this->assertStringContainsString(
+            "filename*=utf-8''" . rawurlencode('WI-ATS.ATCD-008 วิธีปฏิบัติ NOTAM AIP Supplement.pdf'),
+            $disposition,
+        );
+        $this->assertStringNotContainsString('adc.pdf', $disposition);
+    }
+
+    public function test_download_name_is_clean_and_never_empty(): void
+    {
+        $long = new \App\Models\Document(['code' => 'D2610', 'name' => str_repeat('ก', 300)]);
+        $this->assertSame(120 + 4, mb_strlen($long->downloadName()));
+
+        $blank = new \App\Models\Document(['code' => 'D26100002', 'name' => ' /:*? ']);
+        $this->assertSame('D26100002.pdf', $blank->downloadName());
+    }
+
     public function test_user_in_another_section_cannot_open_the_document(): void
     {
         $this->adcDocument();

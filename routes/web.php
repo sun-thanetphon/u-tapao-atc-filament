@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 
 Route::get('/', function () {
     return redirect('/admin');
@@ -17,12 +18,22 @@ Route::get('/storage/{folder}/{path}', function ($folder, $path) {
             ? \App\Models\Document::query()
             : \App\Filament\Resources\DocumentTaskResource::visibleQuery(\App\Models\Document::query());
 
-        if (!$documents->where('file_path', $filePath)->exists() || !Storage::disk('local')->exists($filePath)) {
+        $document = $documents->where('file_path', $filePath)->first();
+
+        if (!$document || !Storage::disk('local')->exists($filePath)) {
             abort(404);
         }
         // ส่งเป็นไฟล์ให้มี Content-Length และรองรับ Range ไม่งั้น CDN ของ Hostinger ส่ง PDF ค้างกลางทาง
+        // ชื่อไฟล์เป็นชื่อเอกสารจริง (ชื่อสำรองเป็น ASCII สำหรับโปรแกรมที่อ่านชื่อไทยไม่ได้) ไม่ใช่รหัสสุ่มบนดิสก์
+        $asciiName = preg_replace('/[^A-Za-z0-9._-]+/', '_', $document->code) . '.pdf';
+
         return response()->file(Storage::disk('local')->path($filePath), [
             'Content-Type' => Storage::disk('local')->mimeType($filePath),
+            'Content-Disposition' => HeaderUtils::makeDisposition(
+                HeaderUtils::DISPOSITION_INLINE,
+                $document->downloadName(),
+                $asciiName,
+            ),
         ]);
     }
     return redirect()->intended('admin');
