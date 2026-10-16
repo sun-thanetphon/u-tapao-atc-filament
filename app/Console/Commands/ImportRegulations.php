@@ -57,8 +57,8 @@ class ImportRegulations extends Command
         $arabic = ['๐' => '0', '๑' => '1', '๒' => '2', '๓' => '3', '๔' => '4', '๕' => '5', '๖' => '6', '๗' => '7', '๘' => '8', '๙' => '9'];
 
         foreach ($entries as $entry) {
-            // ชื่อเอกสารใช้เลขอารบิกทั้งระบบ
-            $entry['name'] = strtr($entry['name'], $arabic);
+            // ชื่อเอกสารใช้เลขอารบิกทั้งระบบ และไม่มี HTML entity ปนมาจากเว็บต้นทาง
+            $entry['name'] = strtr(html_entity_decode($entry['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8'), $arabic);
 
             $source = $dir . '/' . $entry['file'];
 

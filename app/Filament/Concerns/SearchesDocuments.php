@@ -21,17 +21,53 @@ trait SearchesDocuments
             return $query;
         }
 
-        foreach (static::searchWords($search) as $word) {
-            $patterns = array_unique([
-                static::likePattern($word),
-                static::likePattern(str_replace(range(0, 9), self::THAI_DIGITS, $word)),
-            ]);
+        $words = static::searchWords($search);
 
-            $query->where(function (Builder $query) use ($patterns) {
+        if ($words === []) {
+            return $query;
+        }
+
+        // เรียงตามความตรง: คำที่เป็นคำเดี่ยวในชื่อ (เช่น "22" ใน "ฉบับที่ 22") มาก่อนคำที่เป็นแค่ส่วนของคำอื่น (เช่น "2022")
+        // ตัวเรียงนี้มาก่อนการเรียงปกติของตาราง (ใหม่สุดก่อน) จึงใช้เป็นตัวตัดสินเมื่อคะแนนเท่ากัน
+        $query->orderByRaw(
+            '(' . implode(' + ', array_fill(0, count($words), '(name REGEXP ?)')) . ') DESC',
+            array_map(
+                fn (string $word): string => static::wholeWordRegex($word, str_replace(range(0, 9), self::THAI_DIGITS, $word)),
+                $words,
+            ),
+        );
+
+        foreach ($words as $word) {
+            $thai = str_replace(range(0, 9), self::THAI_DIGITS, $word);
+
+            // ตัวเลขล้วน ("22") ต้องเป็นเลขทั้งก้อนในชื่อ ไม่ใช่ส่วนหนึ่งของเลขอื่น (เช่น 2022, 220)
+            // และไม่ค้นในรหัสเอกสารที่ผู้ใช้มองไม่เห็นในรายการ ยกเว้นพิมพ์เลขยาวพอจะเป็นรหัส
+            if (ctype_digit($word)) {
+                $regex = static::wholeWordRegex($word, $thai);
+
+                $query->where(function (Builder $query) use ($regex, $word) {
+                    $query->where('name', 'regexp', $regex)
+                        ->orWhereHas('category', fn (Builder $category) => $category->where('name', 'regexp', $regex));
+
+                    if (strlen($word) >= 7) {
+                        $query->orWhere('code', 'like', static::likePattern($word));
+                    }
+                });
+
+                continue;
+            }
+
+            $patterns = array_unique([static::likePattern($word), static::likePattern($thai)]);
+
+            $query->where(function (Builder $query) use ($patterns, $word) {
                 foreach ($patterns as $pattern) {
                     $query->orWhere('name', 'like', $pattern)
-                        ->orWhere('code', 'like', $pattern)
                         ->orWhereHas('category', fn (Builder $category) => $category->where('name', 'like', $pattern));
+
+                    // รหัสเอกสาร (เช่น D2610...) ค้นได้เมื่อพิมพ์ยาวพอ คำสั้น ๆ ไม่ไปตรงกับรหัสโดยบังเอิญ
+                    if (mb_strlen($word) >= 4) {
+                        $query->orWhere('code', 'like', $pattern);
+                    }
                 }
             });
         }
@@ -50,6 +86,16 @@ trait SearchesDocuments
             preg_split('/[\s\-_\/.,]+/u', $search),
             fn (string $word): bool => $word !== '',
         ));
+    }
+
+    private static function wholeWordRegex(string $word, string $thai): string
+    {
+        return '(^|[^[:alnum:]])(' . static::regexEscape($word) . '|' . static::regexEscape($thai) . ')([^[:alnum:]]|$)';
+    }
+
+    private static function regexEscape(string $word): string
+    {
+        return preg_replace('/[\\\\^$.*+?()\[\]{}|]/', '\\\\$0', $word);
     }
 
     private static function likePattern(string $word): string
