@@ -1483,6 +1483,13 @@ a.uta-strip:hover {
     color: rgb(var(--gray-400));
 }
 
+/* ชื่อเอกสารเป็นลิงก์เปิด PDF: ขีดเส้นใต้ตอน hover/focus ให้รู้ว่ากดได้ */
+.fi-ta-record.uta-task a:hover .fi-ta-text-item-label,
+.fi-ta-record.uta-task a:focus-visible .fi-ta-text-item-label {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
 .uta-task-category {
     margin-left: 0.625rem;
     padding-left: 0.625rem;

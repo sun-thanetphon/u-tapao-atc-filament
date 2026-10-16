@@ -33,6 +33,22 @@ class DocumentTaskTest extends TestCase
             ->assertTableActionVisible('acknowledge', $document);
     }
 
+    public function test_document_name_links_to_the_pdf_like_the_read_button(): void
+    {
+        $user = $this->makeUser($this->section('ADC'));
+        $document = $this->makeDocument([$this->section('ADC')], [$this->section('ADC')]);
+
+        $this->actingAs($user);
+
+        Livewire::test(ListDocumentTasks::class)
+            ->assertTableColumnExists(
+                'name',
+                fn ($column) => $column->getUrl() === DocumentTaskResource::pdfUrl($document) && $column->shouldOpenUrlInNewTab(),
+                $document,
+            )
+            ->assertTableActionHasUrl('viewPdf', DocumentTaskResource::pdfUrl($document), $document);
+    }
+
     public function test_user_can_acknowledge_a_document_once(): void
     {
         $user = $this->makeUser($this->section('ADC'));

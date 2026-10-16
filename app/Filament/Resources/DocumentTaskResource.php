@@ -131,6 +131,16 @@ class DocumentTaskResource extends Resource
         return in_array((string) auth()->user()->section_id, $sections, true) ? 'pending' : 'read-only';
     }
 
+    /**
+     * ลิงก์เปิด PDF ของเอกสาร (route ตรวจสิทธิ์การเข้าถึงไฟล์เอง)
+     */
+    public static function pdfUrl(Document $record): string
+    {
+        [$folder, $path] = explode('/', $record->file_path, 2);
+
+        return route('view.pdf', ['folder' => $folder, 'path' => $path]);
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -154,6 +164,9 @@ class DocumentTaskResource extends Resource
                             ->label('ชื่อเอกสาร')
                             ->weight(FontWeight::Medium)
                             ->wrap()
+                            // กดที่ชื่อเพื่อเปิดอ่านได้เลย เหมือนปุ่ม "อ่านเอกสาร"
+                            ->url(fn (Document $record) => static::pdfUrl($record))
+                            ->openUrlInNewTab()
                             // ค้นหาด้วยรหัสเอกสารได้ แม้ไม่ได้แสดงในรายการ
                             ->searchable(['name', 'code']),
                         Tables\Columns\TextColumn::make('category_label')
@@ -192,11 +205,7 @@ class DocumentTaskResource extends Resource
             ])
             ->actions([
                 Tables\Actions\Action::make('viewPdf')
-                    ->url(function (Document $record) {
-                        [$folder, $path] = explode('/', $record->file_path, 2);
-
-                        return route('view.pdf', ['folder' => $folder, 'path' => $path]);
-                    })
+                    ->url(fn (Document $record) => static::pdfUrl($record))
                     ->openUrlInNewTab()
                     ->button()
                     ->outlined()
