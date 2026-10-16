@@ -1508,12 +1508,13 @@ a.uta-strip:hover {
     color: #1a1400;
 }
 
+/* รับทราบแล้วยังต้องอ่านง่าย: ชื่อเป็นสีข้อความปกติ (ไม่จาง) ต่างจากรอรับทราบที่หนาและมีพื้นทอง */
 .fi-ta-record.uta-task-acknowledged .fi-ta-text-item-label {
-    color: rgb(var(--gray-600));
+    color: rgb(var(--gray-950));
 }
 
 .dark .fi-ta-record.uta-task-acknowledged .fi-ta-text-item-label {
-    color: rgb(var(--gray-400));
+    color: rgb(var(--gray-100));
 }
 
 /* ชื่อเอกสารเป็นลิงก์เปิด PDF: ขีดเส้นใต้ตอน hover/focus ให้รู้ว่ากดได้ */
