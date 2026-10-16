@@ -72,6 +72,13 @@
             </div>
         </section>
 
+        {{-- เอกสารที่รอให้ผู้ใช้รับทราบ: เรื่องสำคัญที่สุดสำหรับคนที่เข้าหน้าแรก --}}
+        @if (\App\Filament\Widgets\MyDocumentsCard::canView())
+            <div class="uta-home-mine">
+                @livewire(\App\Filament\Widgets\MyDocumentsCard::class)
+            </div>
+        @endif
+
         <div class="uta-home-grid">
             <div class="uta-home-roster">
                 @livewire(\App\Filament\Widgets\DutyRosterPublicUrlTable::class)

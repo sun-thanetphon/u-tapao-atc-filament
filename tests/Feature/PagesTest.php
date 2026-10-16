@@ -46,7 +46,10 @@ class PagesTest extends TestCase
             ->assertOk()
             ->assertSee('สวัสดี, ' . $user->getFullName())
             ->assertSee('ใบรับรองบริการการเดินอากาศ')
-            ->assertSee('ตารางเวรทดสอบ');
+            ->assertSee('ตารางเวรทดสอบ')
+            // การ์ดเอกสารที่รอรับทราบอยู่บนหน้า Home ด้วย
+            ->assertSee('ฉบับที่รอให้คุณรับทราบ')
+            ->assertSee('ประกาศที่ต้องรับทราบ');
 
         $this->get('/admin/document-tasks')
             ->assertOk()

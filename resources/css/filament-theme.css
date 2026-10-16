@@ -703,19 +703,20 @@
 .uta-home-news { grid-area: news; }
 .uta-home-docs { grid-area: docs; }
 
+/* การ์ดทุกใบยืดเต็มช่องของตัวเอง ไม่ปล่อยพื้นที่ว่างใต้การ์ดที่สั้นกว่า */
+.uta-home-grid > div,
+.uta-home-grid > div > div,
+.uta-home-grid .fi-wi-widget {
+    display: grid;
+}
+
 @media (min-width: 1024px) {
+    /* ซ้าย Duty Roster สูงเต็ม ขวาซ้อนประชาสัมพันธ์กับเอกสารสำคัญ สองคอลัมน์จึงสูงเท่ากัน */
     .uta-home-grid {
         grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
         grid-template-areas:
             "roster news"
-            "docs docs";
-        align-items: start;
-    }
-
-    .uta-home-docs .uta-links {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        column-gap: 1.5rem;
+            "roster docs";
     }
 }
 
