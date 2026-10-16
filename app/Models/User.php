@@ -120,14 +120,20 @@ class User extends Authenticatable implements FilamentUser, HasName
         return $query->where('status', $status);
     }
 
-    public function isAcknowledged($documentId)
+    /**
+     * @param  int|null  $revision  รอบของไฟล์ที่ต้องการเช็ก (ไม่ระบุ = รอบไหนก็ได้)
+     */
+    public function isAcknowledged($documentId, ?int $revision = null)
     {
-        return $this->acknowledges->where('document_id', $documentId)->isNotEmpty();
+        return $this->acknowledges
+            ->where('document_id', $documentId)
+            ->when($revision !== null, fn ($acks) => $acks->where('revision', $revision))
+            ->isNotEmpty();
     }
 
     public function acknowledgeDateForDocument($documentId)
     {
-        $ack = $this->acknowledges->where('document_id', $documentId)->first();
+        $ack = $this->acknowledges->where('document_id', $documentId)->sortByDesc('revision')->first();
         return $ack ? Carbon::parse($ack->acknowledge_date)->format('d-m-Y H:i:s') : null;
     }
 }

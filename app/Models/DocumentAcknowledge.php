@@ -7,9 +7,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DocumentAcknowledge extends Model
 {
+    protected $attributes = [
+        'revision' => 1,
+    ];
+
     protected $fillable = [
         'user_id',
         'document_id',
+        'revision',
         'acknowledge_date',
     ];
 

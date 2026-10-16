@@ -211,7 +211,7 @@ class DocumentNotifier
         $users = User::query()
             ->active()
             ->whereIn('section_id', $sectionIds)
-            ->whereNotIn('id', $document->acknowledges()->select('user_id'))
+            ->whereNotIn('id', $document->acknowledges()->where('revision', $document->revision)->select('user_id'))
             ->get(['id', 'email']);
 
         $emails = [];

@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Enums\PermissionEnum;
 use App\Filament\Resources\DocumentTaskResource\Pages;
 use App\Models\Document;
+use App\Models\DocumentAcknowledge;
 use App\Models\DocumentCategory;
 use App\Support\CategoryStyle;
 use Filament\Forms\Form;
@@ -76,13 +77,22 @@ class DocumentTaskResource extends Resource
     {
         return static::visibleQuery($query)
             ->where(fn (Builder $query) => static::whereSectionIn($query, 'acknowledge_sections'))
-            ->whereDoesntHave('acknowledges', fn (Builder $query) => $query->where('user_id', auth()->id()));
+            ->whereDoesntHave('acknowledges', fn (Builder $query) => static::whereMyCurrentAcknowledge($query));
     }
 
     public static function acknowledgedQuery(Builder $query): Builder
     {
         return static::visibleQuery($query)
-            ->whereHas('acknowledges', fn (Builder $query) => $query->where('user_id', auth()->id()));
+            ->whereHas('acknowledges', fn (Builder $query) => static::whereMyCurrentAcknowledge($query));
+    }
+
+    /**
+     * การรับทราบของผู้ใช้ปัจจุบันสำหรับไฟล์รอบปัจจุบันของเอกสาร (เปลี่ยนไฟล์แล้วต้องรับทราบใหม่)
+     */
+    private static function whereMyCurrentAcknowledge(Builder $query): Builder
+    {
+        return $query->where('document_acknowledges.user_id', auth()->id())
+            ->whereColumn('document_acknowledges.revision', 'documents.revision');
     }
 
     /**
@@ -97,11 +107,22 @@ class DocumentTaskResource extends Resource
     }
 
     /**
+     * การรับทราบของผู้ใช้ปัจจุบันในไฟล์รอบปัจจุบัน (ต้องโหลดความสัมพันธ์ acknowledges มาก่อน)
+     */
+    private static function myCurrentAcknowledge(Document $record): ?DocumentAcknowledge
+    {
+        return $record->acknowledges->first(
+            fn (DocumentAcknowledge $ack) => (int) $ack->user_id === (int) auth()->id()
+                && (int) $ack->revision === (int) $record->revision
+        );
+    }
+
+    /**
      * สถานะของเอกสารสำหรับผู้ใช้ปัจจุบัน: pending, acknowledged หรือ read-only
      */
     public static function statusFor(Document $record): string
     {
-        if ($record->acknowledges->contains('user_id', auth()->id())) {
+        if (static::myCurrentAcknowledge($record)) {
             return 'acknowledged';
         }
 
@@ -153,7 +174,7 @@ class DocumentTaskResource extends Resource
                         ->grow(false)
                         ->getStateUsing(fn (Document $record) => static::statusFor($record))
                         ->formatStateUsing(fn (string $state, Document $record) => match ($state) {
-                            'acknowledged' => 'รับทราบแล้ว ' . static::displayDate($record->acknowledges->firstWhere('user_id', auth()->id())->acknowledge_date),
+                            'acknowledged' => 'รับทราบแล้ว ' . static::displayDate(static::myCurrentAcknowledge($record)->acknowledge_date),
                             'pending' => 'รอรับทราบ',
                             default => 'อ่านอย่างเดียว',
                         })
@@ -194,7 +215,7 @@ class DocumentTaskResource extends Resource
                     ->modalCancelActionLabel('ยกเลิก')
                     ->action(function (Document $record, $livewire) {
                         $record->acknowledges()->firstOrCreate(
-                            ['user_id' => auth()->id()],
+                            ['user_id' => auth()->id(), 'revision' => $record->revision],
                             ['acknowledge_date' => now()],
                         );
                         $livewire->forgetCategoryCards();

@@ -50,6 +50,11 @@ class AcknowledgeStats
         // จำนวนการรับทราบ แยกตามเอกสารและแผนกของผู้รับทราบ
         $acknowledges = DocumentAcknowledge::query()
             ->join('users', 'users.id', '=', 'document_acknowledges.user_id')
+            // นับเฉพาะการรับทราบไฟล์รอบปัจจุบัน
+            ->join('documents', function ($join) {
+                $join->on('documents.id', '=', 'document_acknowledges.document_id')
+                    ->on('documents.revision', '=', 'document_acknowledges.revision');
+            })
             ->whereNull('users.deleted_at')
             ->where('users.status', UserStatus::ACTIVE)
             ->whereIn('document_acknowledges.document_id', $documents->pluck('id'))

@@ -25,10 +25,11 @@ class FollowExport implements FromView
     {
         return User::active()->whereIn('section_id', $this->document->acknowledge_sections)
             ->with(['section', 'acknowledges' => function ($query) {
-                $query->where('document_id', $this->document->id);
+                $query->where('document_id', $this->document->id)
+                    ->where('revision', $this->document->revision);
             }])
             ->get()
-            ->filter(fn (User $user) => $user->isAcknowledged($this->document->id))
+            ->filter(fn (User $user) => $user->isAcknowledged($this->document->id, $this->document->revision))
             ->values();
     }
 

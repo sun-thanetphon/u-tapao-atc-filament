@@ -22,6 +22,10 @@ class Document extends Model
         'creator_id',
     ];
 
+    protected $attributes = [
+        'revision' => 1,
+    ];
+
     protected $casts = [
         'view_sections' => 'array',
         'acknowledge_sections' => 'array',
@@ -44,9 +48,12 @@ class Document extends Model
         return $this->hasMany(DocumentAcknowledge::class, 'document_id');
     }
 
-    public function isAcknowledged($userId): bool //เช็คว่ารับทราบหรือยัง?
+    public function isAcknowledged($userId): bool //เช็คว่ารับทราบไฟล์รอบปัจจุบันหรือยัง?
     {
-        return $this->acknowledges->where('user_id', $userId)->isNotEmpty();
+        return $this->acknowledges
+            ->where('user_id', $userId)
+            ->where('revision', $this->revision)
+            ->isNotEmpty();
     }
 
     public function canView($sectionId): bool //อยู่ในแผนกที่เห็นเอกสารได้ไหม

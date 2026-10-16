@@ -88,7 +88,7 @@ class FollowDocument extends Page implements HasTable
                     ->label('Acknowledge')
                     ->boolean()
                     ->getStateUsing(function ($record) {
-                        return $record->isAcknowledged($this->record->id);
+                        return $record->isAcknowledged($this->record->id, $this->record->revision);
                     }),
                 TextColumn::make('created_at')
                     ->label('รับทราบเมื่อ')
@@ -97,6 +97,7 @@ class FollowDocument extends Page implements HasTable
                     ->getStateUsing(function ($record) {
                         $ackRecord = DocumentAcknowledge::where('user_id', $record->id)
                             ->where('document_id', $this->getRecord()->id)
+                            ->where('revision', $this->getRecord()->revision)
                             ->first();
                         return $ackRecord ? Carbon::parse($ackRecord->acknowledge_date)->format('d-m-Y') : null;
                     }),
@@ -109,13 +110,13 @@ class FollowDocument extends Page implements HasTable
                 Action::make('supervisorAck')
                     ->requiresConfirmation()
                     ->hidden(function ($record) {
-                        return !auth()->user()->hasRole(RoleEnum::SUPERADMIN) || $record->isAcknowledged($this->record->id);
+                        return !auth()->user()->hasRole(RoleEnum::SUPERADMIN) || $record->isAcknowledged($this->record->id, $this->record->revision);
                     })
                     ->action(function ($record) {
-                        $this->record->acknowledges()->create([
-                            'user_id' => $record->id,
-                            'acknowledge_date' => now()
-                        ]);
+                        $this->record->acknowledges()->firstOrCreate(
+                            ['user_id' => $record->id, 'revision' => $this->record->revision],
+                            ['acknowledge_date' => now()],
+                        );
                         Notification::make()
                             ->title('Force acknowledge successfully')
                             ->icon('heroicon-o-document-check')
