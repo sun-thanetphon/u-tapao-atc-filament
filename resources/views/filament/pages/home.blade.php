@@ -79,6 +79,13 @@
             </div>
         @endif
 
+        {{-- ชุดอ่านสอบ (ตั้งค่าใน config/study_sets.php) ทุกแผนกเห็น --}}
+        @if (\App\Filament\Widgets\ExamStudySetCard::canView())
+            <div class="uta-home-study">
+                @livewire(\App\Filament\Widgets\ExamStudySetCard::class)
+            </div>
+        @endif
+
         <div class="uta-home-grid">
             <div class="uta-home-roster">
                 @livewire(\App\Filament\Widgets\DutyRosterPublicUrlTable::class)
