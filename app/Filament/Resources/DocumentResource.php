@@ -36,6 +36,17 @@ class DocumentResource extends Resource
         return auth()->user()->can(PermissionEnum::DOCUMENT_VIEW);
     }
 
+    /**
+     * ป้ายแผนกจาก id เช่น ["1","2"] => "ADC, APP" โหลดตารางแผนกครั้งเดียวต่อ request ไม่ query ต่อแถว
+     */
+    protected static function sectionPrefixes(?array $ids): string
+    {
+        static $prefixes = null;
+        $prefixes ??= Section::pluck('prefix', 'id');
+
+        return collect($ids)->map(fn ($id) => $prefixes[(int) $id] ?? '')->filter()->implode(', ');
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -127,40 +138,12 @@ class DocumentResource extends Resource
                     ->offColor('danger'),
                 Tables\Columns\TextColumn::make('view_sections')
                     ->alignCenter()
-                    ->formatStateUsing(function ($record) {
-                        $sectionNames = "";
-                        $sections = $record->view_sections;
-                        $totalSections = count($sections);
-
-                        foreach ($sections as $index => $section) {
-                            $sectionName = Section::findOrFail($section)->prefix;
-
-                            $sectionNames .= $sectionName;
-                            if ($index < $totalSections - 1) {
-                                $sectionNames .= ", ";
-                            }
-                        }
-                        return $sectionNames;
-                    })
+                    ->formatStateUsing(fn ($record) => static::sectionPrefixes($record->view_sections))
 
                     ->label('แผนกที่ต้องเห็นเอกสาร'),
                 Tables\Columns\TextColumn::make('acknowledge_sections')
                     ->alignCenter()
-                    ->formatStateUsing(function ($record) {
-                        $sectionNames = "";
-                        $sections = $record->acknowledge_sections;
-                        $totalSections = count($sections);
-
-                        foreach ($sections as $index => $section) {
-                            $sectionName = Section::findOrFail($section)->prefix;
-
-                            $sectionNames .= $sectionName;
-                            if ($index < $totalSections - 1) {
-                                $sectionNames .= ", ";
-                            }
-                        }
-                        return $sectionNames;
-                    })
+                    ->formatStateUsing(fn ($record) => static::sectionPrefixes($record->acknowledge_sections))
 
                     ->label('แผนกที่ต้องรับทราบเอกสาร'),
                 Tables\Columns\TextColumn::make('created_at')
