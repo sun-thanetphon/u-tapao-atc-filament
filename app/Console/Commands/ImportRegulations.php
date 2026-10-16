@@ -26,6 +26,19 @@ class ImportRegulations extends Command
 
     private const CATEGORY = 'CAAT Aviation Regulation';
 
+    /**
+     * ตัด HTML entity ที่ปนมาจากเว็บต้นทาง (เช่น &#x274c; รวมที่ถูกตัดกลางคัน) และเก็บช่องว่าง/วงเล็บให้เรียบร้อย
+     */
+    public static function cleanName(string $name): string
+    {
+        // รหัสตัวเลข (&#x274c; ที่ใช้แทนอีโมจิ รวมที่ถูกตัดกลางคัน) ตัดทิ้งก่อน แล้วค่อยแปลง &amp; ฯลฯ กลับเป็นตัวอักษร
+        $name = preg_replace('/&#x?[0-9a-f]*;?/iu', '', $name);
+        $name = html_entity_decode($name, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $name = preg_replace(['/\(\s+/u', '/\s+\)/u', '/\s+/u'], ['(', ')', ' '], $name);
+
+        return trim($name);
+    }
+
     public function handle(): int
     {
         $dir = rtrim($this->argument('dir'), '/\\');
@@ -58,7 +71,7 @@ class ImportRegulations extends Command
 
         foreach ($entries as $entry) {
             // ชื่อเอกสารใช้เลขอารบิกทั้งระบบ และไม่มี HTML entity ปนมาจากเว็บต้นทาง
-            $entry['name'] = strtr(html_entity_decode($entry['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8'), $arabic);
+            $entry['name'] = self::cleanName(strtr($entry['name'], $arabic));
 
             $source = $dir . '/' . $entry['file'];
 
