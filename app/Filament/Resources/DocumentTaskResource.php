@@ -155,6 +155,8 @@ class DocumentTaskResource extends Resource
                 'cards' => $livewire->categoryCards(),
                 'active' => $livewire->activeCategory(),
             ]))
+            ->searchPlaceholder('ค้นหาชื่อเอกสาร รหัส หรือประเภท')
+            ->searchDebounce('400ms')
             ->defaultSort('created_at', 'desc')
             ->recordClasses(fn (Document $record) => 'uta-task uta-task-' . static::statusFor($record))
             ->columns([

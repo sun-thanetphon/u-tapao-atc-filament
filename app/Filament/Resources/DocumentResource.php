@@ -121,6 +121,8 @@ class DocumentResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->searchPlaceholder('ค้นหาชื่อเอกสาร รหัส หรือประเภท')
+            ->searchDebounce('400ms')
             ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('code')

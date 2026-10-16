@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DocumentResource\Pages;
 
+use App\Filament\Concerns\SearchesDocuments;
 use App\Filament\Resources\DocumentResource;
 use App\Models\Document;
 use App\Support\DocumentNotifier;
@@ -10,6 +11,8 @@ use Filament\Resources\Pages\ListRecords;
 
 class ListDocuments extends ListRecords
 {
+    use SearchesDocuments;
+
     protected static string $resource = DocumentResource::class;
 
     protected function getHeaderActions(): array

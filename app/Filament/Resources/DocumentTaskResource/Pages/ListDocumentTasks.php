@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DocumentTaskResource\Pages;
 
+use App\Filament\Concerns\SearchesDocuments;
 use App\Filament\Resources\DocumentTaskResource;
 use App\Models\Document;
 use Filament\Resources\Components\Tab;
@@ -11,6 +12,8 @@ use Livewire\Attributes\Url;
 
 class ListDocumentTasks extends ListRecords
 {
+    use SearchesDocuments;
+
     protected static string $resource = DocumentTaskResource::class;
 
     /** ประเภทที่เลือก: null = ทั้งหมด, 'none' = ไม่มีประเภท, นอกนั้นเป็น id ของประเภท */
