@@ -153,7 +153,7 @@ class DocumentTaskResource extends Resource
                         ->grow(false)
                         ->getStateUsing(fn (Document $record) => static::statusFor($record))
                         ->formatStateUsing(fn (string $state, Document $record) => match ($state) {
-                            'acknowledged' => 'รับทราบแล้ว ' . static::thaiDate($record->acknowledges->firstWhere('user_id', auth()->id())->acknowledge_date),
+                            'acknowledged' => 'รับทราบแล้ว ' . static::displayDate($record->acknowledges->firstWhere('user_id', auth()->id())->acknowledge_date),
                             'pending' => 'รอรับทราบ',
                             default => 'อ่านอย่างเดียว',
                         })
@@ -280,11 +280,14 @@ class DocumentTaskResource extends Resource
         return $cards;
     }
 
-    private static function thaiDate($date): string
+    /**
+     * วันที่เดือนภาษาไทย ปี ค.ศ. เช่น "16 ต.ค. 2026"
+     */
+    private static function displayDate($date): string
     {
         $date = \Illuminate\Support\Carbon::parse($date)->locale('th');
 
-        return $date->translatedFormat('j M') . ' ' . ($date->year + 543);
+        return $date->translatedFormat('j M Y');
     }
 
     public static function getRelations(): array

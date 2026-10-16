@@ -16,7 +16,7 @@
                             <span class="uta-latest-name">{{ $item->user->getFullName() }}</span>
                             <span class="uta-latest-doc">{{ $item->document->name }}</span>
                         </span>
-                        <time class="uta-latest-time" datetime="{{ $date->toIso8601String() }}" title="{{ $date->translatedFormat('j M') }} {{ $date->year + 543 }} {{ $date->format('H:i') }}">
+                        <time class="uta-latest-time" datetime="{{ $date->toIso8601String() }}" title="{{ $date->translatedFormat('j M') }} {{ $date->year }} {{ $date->format('H:i') }}">
                             {{ $date->diffForHumans(short: true) }}
                         </time>
                     </li>

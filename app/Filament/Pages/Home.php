@@ -47,10 +47,10 @@ class Home extends Page
     }
 
     /**
-     * วันที่แบบ พ.ศ. เช่น "10 ตุลาคม 2569"
+     * วันที่เดือนภาษาไทย ปี ค.ศ. เช่น "10 ตุลาคม 2026"
      */
     private function thaiDate(Carbon $date, string $format): string
     {
-        return $date->translatedFormat($format) . ' ' . ($date->year + 543);
+        return $date->translatedFormat($format) . ' ' . $date->year;
     }
 }
