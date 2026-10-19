@@ -69,6 +69,20 @@ class CredentialMatcher
             $value = \Normalizer::normalize($value, \Normalizer::FORM_C) ?: $value;
         }
 
+        // พิมพ์ "ธุ์" ได้สองลำดับ (สระอุ+การันต์ หรือ การันต์+สระอุ) ที่หน้าตาเหมือนกันแต่รหัสต่างกัน
+        // จึงเรียงเครื่องหมายที่ซ้อนบนตัวอักษรเดียวกันให้เป็นลำดับเดียว: สระ ก่อน วรรณยุกต์/การันต์
+        $value = (string) preg_replace_callback(
+            '/[\x{0E31}\x{0E34}-\x{0E3A}\x{0E47}-\x{0E4E}]{2,}/u',
+            function (array $m): string {
+                $marks = mb_str_split($m[0]);
+                $vowels = array_filter($marks, fn (string $c) => mb_ord($c) < 0x0E47);
+                $tones = array_filter($marks, fn (string $c) => mb_ord($c) >= 0x0E47);
+
+                return implode('', $vowels) . implode('', $tones);
+            },
+            $value
+        );
+
         return mb_strtolower((string) preg_replace('/[\s\x{200B}\x{00A0}]+/u', '', $value));
     }
 }

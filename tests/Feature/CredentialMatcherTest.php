@@ -47,6 +47,17 @@ class CredentialMatcherTest extends TestCase
         $this->assertSame(CredentialMatcher::OK, $result['status']);
     }
 
+    public function test_thai_marks_typed_in_a_different_order_still_match(): void
+    {
+        // ระบบ: ธ + สระอุ + การันต์ / ชีต: ธ + การันต์ + สระอุ (หน้าตาเหมือนกัน รหัสต่างกัน)
+        $user = $this->person('อภิวัฒน์', "พิมพ์พันธ\u{0E38}\u{0E4C}ดี");
+
+        $result = (new CredentialMatcher())->match("พ.จ.อ.อภิวัฒน์ พิมพ์พันธ\u{0E4C}\u{0E38}ดี");
+
+        $this->assertSame(CredentialMatcher::OK, $result['status']);
+        $this->assertSame($user->id, $result['user']->id);
+    }
+
     public function test_unknown_name_has_no_account(): void
     {
         $this->person('สมคิด', 'สุนทรเพราะ');
