@@ -1960,3 +1960,48 @@ a.uta-study-subject:focus-visible {
     font-weight: 400;
     opacity: 0.7;
 }
+
+.uta-video-row {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.875rem 1rem;
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.15s;
+}
+
+.uta-video-row:hover {
+    box-shadow: 0 0 0 2px var(--uta-navy);
+}
+
+.dark .uta-video-row:hover {
+    box-shadow: 0 0 0 2px var(--uta-amber);
+}
+
+.uta-video-row-icon {
+    flex: none;
+    width: 2.25rem;
+    height: 2.25rem;
+    color: var(--uta-navy);
+}
+
+.dark .uta-video-row-icon {
+    color: var(--uta-amber);
+}
+
+.uta-video-row-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+}
+
+.uta-video-row-title {
+    font-weight: 600;
+}
+
+.uta-video-row-desc {
+    font-size: 0.875rem;
+    opacity: 0.7;
+}

@@ -17,7 +17,7 @@ class TutorialVideos extends Page
 
     protected static ?string $navigationLabel = 'Learning Video';
 
-    protected static ?string $title = 'วิดีโอแนะนำการใช้งาน';
+    protected static ?string $title = 'Learning Video';
 
     protected static ?int $navigationSort = 2;
 

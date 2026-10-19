@@ -1,35 +1,23 @@
 <x-filament-panels::page>
 
     @forelse ($videos as $video)
-        <article class="uta-card uta-video">
-            <h2 class="uta-service-title">
-                {{ $video->title }}
-                @unless ($video->publish)
-                    <span class="uta-video-draft">(ยังไม่เผยแพร่)</span>
-                @endunless
-            </h2>
-
-            @if ($video->isUpload())
-                <video class="uta-video-player" controls preload="metadata" src="{{ url('/tutorial-video/' . $video->id) }}"></video>
-            @elseif ($video->embedSrc())
-                <iframe
-                    class="uta-video-player"
-                    src="{{ $video->embedSrc() }}"
-                    title="{{ $video->title }}"
-                    loading="lazy"
-                    allow="fullscreen; picture-in-picture"
-                    referrerpolicy="strict-origin-when-cross-origin"
-                    allowfullscreen
-                ></iframe>
-            @endif
-
-            @if ($video->description)
-                <p>{{ $video->description }}</p>
-            @endif
-        </article>
+        <a class="uta-card uta-video-row" href="{{ url('/admin/learning-video/' . $video->id) }}">
+            <x-filament::icon icon="heroicon-s-play-circle" class="uta-video-row-icon" />
+            <span class="uta-video-row-text">
+                <span class="uta-video-row-title">
+                    {{ $video->title }}
+                    @unless ($video->publish)
+                        <span class="uta-video-draft">(ยังไม่เผยแพร่)</span>
+                    @endunless
+                </span>
+                @if ($video->description)
+                    <span class="uta-video-row-desc">{{ $video->description }}</span>
+                @endif
+            </span>
+        </a>
     @empty
         <article class="uta-card">
-            <p>ยังไม่มีวิดีโอแนะนำ</p>
+            <p>ยังไม่มีวิดีโอ</p>
         </article>
     @endforelse
 

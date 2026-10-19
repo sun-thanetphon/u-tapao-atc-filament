@@ -95,12 +95,44 @@ class TutorialVideoTest extends TestCase
         $this->uploaded(['title' => 'คลิป YouTube', 'source' => 'embed', 'file_path' => null, 'embed_url' => 'https://youtu.be/dQw4w9WgXcQ']);
         $this->actingAs($this->makeUser($this->section('ADC')));
 
+        // หน้ารายการแสดงเฉพาะชื่อ ไม่โหลดตัวเล่นวิดีโอ
         $this->get('/admin/learning-video')
             ->assertOk()
+            ->assertSee('Learning Video')
             ->assertSee('คลิปที่เห็นได้')
             ->assertSee('คลิป YouTube')
-            ->assertSee('youtube-nocookie.com/embed/dQw4w9WgXcQ', false)
-            ->assertDontSee('คลิปที่ซ่อน');
+            ->assertDontSee('คลิปที่ซ่อน')
+            ->assertDontSee('<video', false)
+            ->assertDontSee('<iframe', false);
+    }
+
+    public function test_watch_page_plays_an_uploaded_video(): void
+    {
+        $video = $this->uploaded(['title' => 'คลิปที่เล่นได้']);
+        $this->actingAs($this->makeUser($this->section('ADC')));
+
+        $this->get("/admin/learning-video/{$video->id}")
+            ->assertOk()
+            ->assertSee('คลิปที่เล่นได้')
+            ->assertSee("/tutorial-video/{$video->id}", false);
+    }
+
+    public function test_watch_page_embeds_a_youtube_video(): void
+    {
+        $video = $this->uploaded(['source' => 'embed', 'file_path' => null, 'embed_url' => 'https://youtu.be/dQw4w9WgXcQ']);
+        $this->actingAs($this->makeUser($this->section('ADC')));
+
+        $this->get("/admin/learning-video/{$video->id}")
+            ->assertOk()
+            ->assertSee('youtube-nocookie.com/embed/dQw4w9WgXcQ', false);
+    }
+
+    public function test_watch_page_hides_unpublished_video_from_regular_users(): void
+    {
+        $video = $this->uploaded(['publish' => false]);
+        $this->actingAs($this->makeUser($this->section('ADC')));
+
+        $this->get("/admin/learning-video/{$video->id}")->assertNotFound();
     }
 
     public function test_livewire_temporary_uploads_accept_videos_up_to_300_mb(): void
