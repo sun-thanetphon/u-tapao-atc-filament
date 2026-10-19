@@ -18,17 +18,17 @@ class TutorialVideoResource extends Resource
 {
     protected static ?string $model = TutorialVideo::class;
 
-    protected static ?string $slug = 'manage-tutorial-videos';
+    protected static ?string $slug = 'manage-learning-video';
 
     protected static ?string $navigationIcon = 'heroicon-o-video-camera';
 
-    protected static ?string $navigationGroup = 'Public Links';
+    protected static ?string $navigationGroup = 'Tasks & Acknowledgements';
 
     protected static ?string $navigationLabel = 'จัดการวิดีโอแนะนำ';
 
     protected static ?string $modelLabel = 'วิดีโอแนะนำ';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 3;
 
     public static function canAccess(): bool
     {

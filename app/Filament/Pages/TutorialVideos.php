@@ -13,13 +13,15 @@ class TutorialVideos extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-play-circle';
 
-    protected static ?string $navigationGroup = 'Public Links';
+    protected static ?string $navigationGroup = 'Tasks & Acknowledgements';
 
     protected static ?string $navigationLabel = 'วิดีโอแนะนำ';
 
     protected static ?string $title = 'วิดีโอแนะนำการใช้งาน';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 2;
+
+    protected static ?string $slug = 'learning-video';
 
     protected static string $view = 'filament.pages.tutorial-videos';
 

@@ -95,7 +95,7 @@ class TutorialVideoTest extends TestCase
         $this->uploaded(['title' => 'คลิป YouTube', 'source' => 'embed', 'file_path' => null, 'embed_url' => 'https://youtu.be/dQw4w9WgXcQ']);
         $this->actingAs($this->makeUser($this->section('ADC')));
 
-        $this->get('/admin/tutorial-videos')
+        $this->get('/admin/learning-video')
             ->assertOk()
             ->assertSee('คลิปที่เห็นได้')
             ->assertSee('คลิป YouTube')
@@ -116,7 +116,7 @@ class TutorialVideoTest extends TestCase
     {
         $this->actingAs($this->makeUser($this->section('ADC')));
 
-        $this->get('/admin/manage-tutorial-videos')->assertForbidden();
+        $this->get('/admin/manage-learning-video')->assertForbidden();
     }
 
     public function test_admin_can_open_the_manage_page(): void
@@ -124,6 +124,6 @@ class TutorialVideoTest extends TestCase
         $this->uploaded(['title' => 'คลิปที่ซ่อน', 'publish' => false]);
         $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::ADMIN));
 
-        $this->get('/admin/manage-tutorial-videos')->assertOk()->assertSee('คลิปที่ซ่อน');
+        $this->get('/admin/manage-learning-video')->assertOk()->assertSee('คลิปที่ซ่อน');
     }
 }
