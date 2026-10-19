@@ -103,6 +103,15 @@ class TutorialVideoTest extends TestCase
             ->assertDontSee('คลิปที่ซ่อน');
     }
 
+    public function test_livewire_temporary_uploads_accept_videos_up_to_300_mb(): void
+    {
+        // กฎนี้ใช้กับทุกฟอร์มอัปโหลด ถ้าไม่มี mp4/webm ฟอร์มวิดีโอจะ "Error during upload"
+        $rules = config('livewire.temporary_file_upload.rules');
+
+        $this->assertContains('mimes:pdf,csv,txt,xlsx,xls,mp4,webm', $rules);
+        $this->assertContains('max:307200', $rules);
+    }
+
     public function test_regular_user_cannot_open_the_manage_page(): void
     {
         $this->actingAs($this->makeUser($this->section('ADC')));
