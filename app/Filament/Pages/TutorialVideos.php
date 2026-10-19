@@ -15,7 +15,7 @@ class TutorialVideos extends Page
 
     protected static ?string $navigationGroup = 'Tasks & Acknowledgements';
 
-    protected static ?string $navigationLabel = 'วิดีโอแนะนำ';
+    protected static ?string $navigationLabel = 'Learning Video';
 
     protected static ?string $title = 'วิดีโอแนะนำการใช้งาน';
 
