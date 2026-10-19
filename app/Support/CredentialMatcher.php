@@ -25,7 +25,8 @@ class CredentialMatcher
     {
         $this->users = User::query()
             ->active()
-            ->get(['id', 'firstname', 'lastname', 'email'])
+            ->with('rank')
+            ->get(['id', 'rank_id', 'firstname', 'lastname', 'email'])
             ->map(fn (User $user) => ['key' => self::normalize($user->firstname . $user->lastname), 'user' => $user])
             ->filter(fn (array $entry) => $entry['key'] !== '')
             ->values()
