@@ -18,6 +18,20 @@ class CredentialReminderService
 {
     public const WINDOW_DAYS = 90;
 
+    /** เตือนที่เหลือ 3 เดือน, 2 เดือน, 1 เดือน (วัน) เรียงมากไปน้อย */
+    public const THRESHOLDS = [90, 60, 30];
+
+    /**
+     * เกณฑ์ที่แคบที่สุดที่ถึงแล้ว เช่น เหลือ 50 วัน = 60, เหลือ 20 วัน (หรือหมดอายุแล้ว) = 30
+     * null = ยังไม่ถึงเกณฑ์แรก
+     */
+    public static function thresholdFor(int $daysLeft): ?int
+    {
+        $reached = array_filter(self::THRESHOLDS, fn (int $t) => $daysLeft <= $t);
+
+        return $reached === [] ? null : min($reached);
+    }
+
     public const PROBLEM_REASONS = [
         CredentialMatcher::NO_ACCOUNT => 'ไม่พบบัญชีที่ชื่อตรงกัน',
         CredentialMatcher::DUPLICATE => 'มีบัญชีชื่อซ้ำกัน จึงไม่ส่ง',
@@ -49,8 +63,8 @@ class CredentialReminderService
 
         $matcher = new CredentialMatcher();
         $reminded = CredentialReminder::query()
-            ->get(['user_id', 'item', 'expires_on'])
-            ->mapWithKeys(fn (CredentialReminder $r) => [$r->user_id . '|' . $r->item . '|' . $r->expires_on->toDateString() => true])
+            ->get(['user_id', 'item', 'expires_on', 'threshold'])
+            ->mapWithKeys(fn (CredentialReminder $r) => [self::key($r->user_id, $r->item, $r->expires_on->toDateString(), $r->threshold) => true])
             ->all();
 
         $cap = (int) config('mail.daily_cap_for_reminders', 40);
@@ -105,12 +119,32 @@ class CredentialReminderService
             }
 
             // จองสิทธิ์ก่อนส่ง: รัน cron ซ้อนกันแล้วอีกรอบจะจองไม่ได้ จึงไม่ส่งซ้ำ
-            $reserved = array_values(array_filter($items, fn (array $item) => DB::table('credential_reminders')->insertOrIgnore([
-                'user_id' => $user->id,
-                'item' => $item['kind'],
-                'expires_on' => $item['expires_on'],
-                'created_at' => now(),
-            ]) === 1));
+            // จองเกณฑ์ที่ถึงแล้วและเกณฑ์ที่กว้างกว่าทั้งหมด (เช่น เห็นครั้งแรกตอนเหลือ 20 วัน = ถือว่า 90/60/30 เตือนแล้ว)
+            $reserved = [];
+            $inserted = [];
+
+            foreach ($items as $item) {
+                $newly = [];
+
+                foreach (self::THRESHOLDS as $t) {
+                    if ($t >= $item['threshold'] && DB::table('credential_reminders')->insertOrIgnore([
+                        'user_id' => $user->id,
+                        'item' => $item['kind'],
+                        'expires_on' => $item['expires_on'],
+                        'threshold' => $t,
+                        'created_at' => now(),
+                    ]) === 1) {
+                        $newly[] = $t;
+                    }
+                }
+
+                if (in_array($item['threshold'], $newly, true)) {
+                    $reserved[] = $item;
+                    $inserted[$item['kind']] = $item['expires_on'] . '|' . implode(',', $newly);
+                } else {
+                    $this->release($user->id, $item['kind'], $item['expires_on'], $newly);
+                }
+            }
 
             if ($reserved === []) {
                 $result['skipped']++;
@@ -127,11 +161,8 @@ class CredentialReminderService
 
             // ส่งไม่สำเร็จ: คืนสิทธิ์ เพื่อให้ลองใหม่พรุ่งนี้
             foreach ($reserved as $item) {
-                CredentialReminder::query()
-                    ->where('user_id', $user->id)
-                    ->where('item', $item['kind'])
-                    ->whereDate('expires_on', $item['expires_on'])
-                    ->delete();
+                [$date, $thresholds] = explode('|', $inserted[$item['kind']]);
+                $this->release($user->id, $item['kind'], $date, array_map('intval', explode(',', $thresholds)));
             }
 
             $result['failed']++;
@@ -188,7 +219,7 @@ class CredentialReminderService
     /**
      * @param  array<string, Carbon>  $items
      * @param  array<string, true>  $reminded
-     * @return list<array{kind: string, expires_on: string, days_left: int}>
+     * @return list<array{kind: string, expires_on: string, days_left: int, threshold: int}>
      */
     private function dueItems(array $items, array $reminded, Carbon $today, ?int $userId): array
     {
@@ -201,19 +232,42 @@ class CredentialReminderService
 
             $expires = $items[$kind]->copy()->startOfDay();
             $daysLeft = (int) round($today->floatDiffInDays($expires, false));
+            $threshold = self::thresholdFor($daysLeft);
 
-            if ($daysLeft > self::WINDOW_DAYS) {
+            if ($threshold === null) {
                 continue;
             }
 
-            if ($userId !== null && isset($reminded[$userId . '|' . $kind . '|' . $expires->toDateString()])) {
+            if ($userId !== null && isset($reminded[self::key($userId, $kind, $expires->toDateString(), $threshold)])) {
                 continue;
             }
 
-            $due[] = ['kind' => $kind, 'expires_on' => $expires->toDateString(), 'days_left' => $daysLeft];
+            $due[] = ['kind' => $kind, 'expires_on' => $expires->toDateString(), 'days_left' => $daysLeft, 'threshold' => $threshold];
         }
 
         return $due;
+    }
+
+    public static function key(int $userId, string $kind, string $expiresOn, int $threshold): string
+    {
+        return $userId . '|' . $kind . '|' . $expiresOn . '|' . $threshold;
+    }
+
+    /**
+     * @param  list<int>  $thresholds
+     */
+    private function release(int $userId, string $kind, string $expiresOn, array $thresholds): void
+    {
+        if ($thresholds === []) {
+            return;
+        }
+
+        CredentialReminder::query()
+            ->where('user_id', $userId)
+            ->where('item', $kind)
+            ->whereDate('expires_on', $expiresOn)
+            ->whereIn('threshold', $thresholds)
+            ->delete();
     }
 
     private function send(string $to, CredentialExpiryMail $mail): bool

@@ -93,7 +93,8 @@ class CredentialReminderTest extends TestCase
 
         $this->assertSame(1, $result['sent']);
         Mail::assertSent(CredentialExpiryMail::class, fn ($m) => count($m->items) === 3 && $m->hasTo('somkid@example.com'));
-        $this->assertSame(3, CredentialReminder::query()->count());
+        // เกณฑ์ที่ถึงแล้วและที่กว้างกว่าจองหมด: rating 43 วัน = 90+60, licence 13 วัน = 90+60+30, language 73 วัน = 90
+        $this->assertSame(6, CredentialReminder::query()->count());
     }
 
     public function test_second_run_does_not_send_again_but_a_renewed_date_does(): void
@@ -283,6 +284,68 @@ class CredentialReminderTest extends TestCase
         $this->assertSame(1, $result['sent']);
         $this->assertSame(0, $result['digests']);
         Mail::assertNotSent(CredentialDigestMail::class);
+    }
+
+    public function test_reminds_again_at_60_and_30_days_but_not_in_between(): void
+    {
+        Mail::fake();
+        $this->person();
+        $row = $this->row('น.ต.สมคิด สุนทรเพราะ', ['licence' => '2027-01-17']); // หมดอายุ 90 วันจากวันที่ตั้งไว้
+
+        $this->assertSame(1, $this->remind([$row])['sent']); // 90 วัน
+
+        $this->today = $this->today->copy()->addDays(20); // เหลือ 70 วัน
+        $this->assertSame(0, $this->remind([$row])['sent']);
+
+        $this->today = $this->today->copy()->addDays(10); // เหลือ 60 วัน
+        $this->assertSame(1, $this->remind([$row])['sent']);
+
+        $this->today = $this->today->copy()->addDays(15); // เหลือ 45 วัน
+        $this->assertSame(0, $this->remind([$row])['sent']);
+
+        $this->today = $this->today->copy()->addDays(15); // เหลือ 30 วัน
+        $this->assertSame(1, $this->remind([$row])['sent']);
+
+        $this->today = $this->today->copy()->addDays(30); // วันหมดอายุ
+        $this->assertSame(0, $this->remind([$row])['sent']);
+
+        Mail::assertSent(CredentialExpiryMail::class, 3);
+        $this->assertSame(3, CredentialReminder::query()->count());
+    }
+
+    public function test_first_seen_late_sends_once_and_marks_earlier_milestones_done(): void
+    {
+        Mail::fake();
+        $this->person();
+        $row = $this->row('น.ต.สมคิด สุนทรเพราะ', ['medical' => '2026-11-08']); // เหลือ 20 วัน
+
+        $this->assertSame(1, $this->remind([$row])['sent']);
+        $this->assertSame(3, CredentialReminder::query()->count()); // 90, 60, 30
+
+        $this->today = $this->today->copy()->addDays(5);
+        $this->assertSame(0, $this->remind([$row])['sent']);
+        Mail::assertSent(CredentialExpiryMail::class, 1);
+    }
+
+    public function test_failed_send_releases_every_milestone_it_reserved(): void
+    {
+        $this->person();
+        $row = $this->row('น.ต.สมคิด สุนทรเพราะ', ['medical' => '2026-11-08']); // เหลือ 20 วัน
+
+        Mail::shouldReceive('to')->once()->andThrow(new \RuntimeException('smtp down'));
+        $this->assertSame(1, $this->remind([$row])['failed']);
+        $this->assertSame(0, CredentialReminder::query()->count());
+    }
+
+    public function test_threshold_for(): void
+    {
+        $this->assertNull(CredentialReminderService::thresholdFor(91));
+        $this->assertSame(90, CredentialReminderService::thresholdFor(90));
+        $this->assertSame(90, CredentialReminderService::thresholdFor(61));
+        $this->assertSame(60, CredentialReminderService::thresholdFor(60));
+        $this->assertSame(60, CredentialReminderService::thresholdFor(31));
+        $this->assertSame(30, CredentialReminderService::thresholdFor(30));
+        $this->assertSame(30, CredentialReminderService::thresholdFor(-10));
     }
 
     public function test_sheet_failure_propagates_and_sends_nothing(): void

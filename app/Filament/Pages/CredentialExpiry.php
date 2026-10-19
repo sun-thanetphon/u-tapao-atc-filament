@@ -57,8 +57,8 @@ class CredentialExpiry extends Page
 
         $matcher = new CredentialMatcher();
         $reminded = CredentialReminder::query()
-            ->get(['user_id', 'item', 'expires_on'])
-            ->mapWithKeys(fn (CredentialReminder $r) => [$r->user_id . '|' . $r->item . '|' . $r->expires_on->toDateString() => true])
+            ->get(['user_id', 'item', 'expires_on', 'threshold'])
+            ->mapWithKeys(fn (CredentialReminder $r) => [CredentialReminderService::key($r->user_id, $r->item, $r->expires_on->toDateString(), $r->threshold) => true])
             ->all();
 
         $today = now()->timezone(config('app.timezone'))->startOfDay();
@@ -79,7 +79,9 @@ class CredentialExpiry extends Page
             foreach ($row['items'] as $kind => $date) {
                 $expires = $date->copy()->startOfDay();
                 $daysLeft = (int) round($today->floatDiffInDays($expires, false));
-                $sent = $match['user'] && isset($reminded[$match['user']->id . '|' . $kind . '|' . $expires->toDateString()]);
+                $threshold = CredentialReminderService::thresholdFor($daysLeft);
+                $sent = $threshold !== null && $match['user']
+                    && isset($reminded[CredentialReminderService::key($match['user']->id, $kind, $expires->toDateString(), $threshold)]);
 
                 $items[] = [
                     'name' => $row['name'],
@@ -87,7 +89,7 @@ class CredentialExpiry extends Page
                     'expires_on' => $expires->format('d/m/Y'),
                     'days_left' => $daysLeft,
                     'state' => match (true) {
-                        $daysLeft > CredentialReminderService::WINDOW_DAYS => ['label' => 'ยังไม่ถึงกำหนดเตือน', 'color' => 'gray'],
+                        $threshold === null => ['label' => 'ยังไม่ถึงกำหนดเตือน', 'color' => 'gray'],
                         $match['status'] !== CredentialMatcher::OK => ['label' => 'ส่งไม่ได้: ' . CredentialReminderService::PROBLEM_REASONS[$match['status']], 'color' => 'danger'],
                         $sent => ['label' => 'เตือนแล้ว', 'color' => 'success'],
                         default => ['label' => 'จะเตือนในรอบถัดไป', 'color' => 'warning'],

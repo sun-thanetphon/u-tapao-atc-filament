@@ -2,7 +2,7 @@
 
     <div class="uta-expiry-bar">
         <p class="uta-expiry-note">
-            อ่านจากชีตผู้ถือใบอนุญาตของหน่วย (แก้ข้อมูลที่ชีต) ระบบส่งอีเมลเตือนเจ้าตัวเมื่อเหลือไม่เกิน {{ \App\Support\CredentialReminderService::WINDOW_DAYS }} วัน
+            อ่านจากชีตผู้ถือใบอนุญาตของหน่วย (แก้ข้อมูลที่ชีต) ระบบส่งอีเมลเตือนเจ้าตัวเมื่อเหลือ 3 เดือน, 2 เดือน และ 1 เดือน ก่อนหมดอายุ
         </p>
         <div class="uta-expiry-actions">
             <x-filament::button color="gray" icon="heroicon-m-arrow-path" wire:click="refreshSheet">

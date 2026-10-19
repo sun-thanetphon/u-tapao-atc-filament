@@ -9,7 +9,7 @@ class CredentialReminder extends Model
 {
     public const UPDATED_AT = null;
 
-    protected $fillable = ['user_id', 'item', 'expires_on'];
+    protected $fillable = ['user_id', 'item', 'expires_on', 'threshold'];
 
     protected function casts(): array
     {

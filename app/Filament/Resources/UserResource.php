@@ -384,17 +384,7 @@ class UserResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('username')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('rank.name')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('firstname')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('lastname')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('email')
-                    ->label('อีเมล')
-                    ->searchable()
-                    ->placeholder('-'),
+                // อยู่ถัดจาก username เพื่อให้เห็นตำแหน่งโดยไม่ต้องเลื่อนตารางไปทางขวา
                 Tables\Columns\TagsColumn::make('roles.name')
                     ->sortable()
                     ->extraAttributes([
@@ -407,6 +397,17 @@ class UserResource extends Resource
                         RoleEnum::USER => 'success',
                         default => 'secondary'
                     }),
+                Tables\Columns\TextColumn::make('rank.name')
+                    ->numeric()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('firstname')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('lastname')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('email')
+                    ->label('อีเมล')
+                    ->searchable()
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

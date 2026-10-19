@@ -73,7 +73,7 @@ class CredentialPageTest extends TestCase
     public function test_lists_items_nearest_first_with_reminder_state(): void
     {
         $holder = $this->holder();
-        CredentialReminder::create(['user_id' => $holder->id, 'item' => 'licence', 'expires_on' => '2026-12-01']);
+        CredentialReminder::create(['user_id' => $holder->id, 'item' => 'licence', 'expires_on' => '2026-12-01', 'threshold' => 60]);
         $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::ADMIN));
 
         Livewire::test(CredentialExpiry::class)
