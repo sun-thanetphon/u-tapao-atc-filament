@@ -366,6 +366,16 @@ class UserResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            // super-admin ก่อน แล้ว admin แล้วผู้ใช้ทั่วไป ในแต่ละกลุ่มเรียงตามเวลาสมัคร (เก่าสุดก่อน)
+            ->defaultSort(fn (Builder $query): Builder => $query
+                ->orderByRaw(
+                    "(select coalesce(min(case roles.name when ? then 0 when ? then 1 else 2 end), 3)"
+                    . " from roles inner join model_has_roles on roles.id = model_has_roles.role_id"
+                    . " where model_has_roles.model_id = users.id and model_has_roles.model_type = ?)",
+                    [RoleEnum::SUPERADMIN, RoleEnum::ADMIN, User::class]
+                )
+                ->orderBy('users.created_at')
+                ->orderBy('users.id'))
             ->columns([
                 Tables\Columns\TextColumn::make('section.name')
                     ->getStateUsing(function ($record) {
