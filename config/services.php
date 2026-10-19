@@ -28,6 +28,12 @@ return [
         'key' => env('RESEND_KEY'),
     ],
 
+    // ชีตวันหมดอายุใบอนุญาต (อ่านอย่างเดียว ต้องเปิดแบบมีลิงก์ดูได้)
+    'credential_sheet' => [
+        'id' => env('CREDENTIAL_SHEET_ID'),
+        'gid' => env('CREDENTIAL_SHEET_GID', '0'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
