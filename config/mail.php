@@ -153,4 +153,7 @@ return [
 
     'reminder_test_recipient' => env('MAIL_REMINDER_TEST_RECIPIENT'),
 
+    // ผู้ดูแลที่ได้รับเมลสรุปทุกครั้งที่มีการส่งเตือน (คั่นหลายที่อยู่ด้วยจุลภาค)
+    'reminder_admin_recipients' => array_values(array_filter(array_map('trim', explode(',', (string) env('MAIL_REMINDER_ADMINS', ''))))),
+
 ];

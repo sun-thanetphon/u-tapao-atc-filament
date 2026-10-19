@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Mail\CredentialDigestMail;
 use App\Mail\CredentialExpiryMail;
 use App\Models\CredentialReminder;
 use Carbon\Carbon;
@@ -26,7 +27,7 @@ class CredentialReminderService
 
     /**
      * @param  list<array{name: string, items: array<string, Carbon>, unreadable: list<string>}>|null  $rows  ไม่ระบุ = ดึงจากชีต
-     * @return array{sent: int, skipped: int, failed: int, plan: list<array{user_id: int, name: string, items: list<array{kind: string, expires_on: string, days_left: int}>}>, problems: list<array{name: string, reason: string}>}
+     * @return array{sent: int, skipped: int, failed: int, digests: int, plan: list<array{user_id: int, name: string, items: list<array{kind: string, expires_on: string, days_left: int}>}>, problems: list<array{name: string, reason: string}>}
      *
      * @throws CredentialSheetException
      */
@@ -35,7 +36,7 @@ class CredentialReminderService
         $rows ??= CredentialSheet::fetch();
         $today = ($today ?? now())->copy()->timezone(config('app.timezone'))->startOfDay();
 
-        $result = ['sent' => 0, 'skipped' => 0, 'failed' => 0, 'plan' => [], 'problems' => []];
+        $result = ['sent' => 0, 'skipped' => 0, 'failed' => 0, 'digests' => 0, 'plan' => [], 'problems' => []];
 
         $testRecipient = trim((string) config('mail.reminder_test_recipient'));
 
@@ -54,6 +55,7 @@ class CredentialReminderService
 
         $cap = (int) config('mail.daily_cap_for_reminders', 40);
         $quotaLeft = true;
+        $remindedPeople = [];
 
         foreach ($rows as $row) {
             if ($row['unreadable'] !== []) {
@@ -92,7 +94,12 @@ class CredentialReminderService
 
             if ($testRecipient !== '') {
                 $ok = $this->send($testRecipient, new CredentialExpiryMail($user, $items, true));
-                $ok ? $result['sent']++ : $result['failed']++;
+                if ($ok) {
+                    $result['sent']++;
+                    $remindedPeople[] = ['name' => $row['name'], 'items' => $items];
+                } else {
+                    $result['failed']++;
+                }
 
                 continue;
             }
@@ -113,6 +120,7 @@ class CredentialReminderService
 
             if ($this->send((string) $user->email, new CredentialExpiryMail($user, $reserved))) {
                 $result['sent']++;
+                $remindedPeople[] = ['name' => $row['name'], 'items' => $reserved];
 
                 continue;
             }
@@ -129,16 +137,52 @@ class CredentialReminderService
             $result['failed']++;
         }
 
+        $result['digests'] = $this->sendDigest($remindedPeople, $result['problems'], $testRecipient);
+
         // ไม่บันทึกชื่อ อีเมล หรือวันที่ใน log
         Log::info('Credential reminders run', [
             'dry_run' => $dryRun,
             'sent' => $result['sent'],
             'skipped' => $result['skipped'],
             'failed' => $result['failed'],
+            'digests' => $result['digests'],
             'problems' => count($result['problems']),
         ]);
 
         return $result;
+    }
+
+    /**
+     * เมลสรุปถึงผู้ดูแลทุกครั้งที่มีการเตือนจริง (ส่งไม่เกินหนึ่งฉบับต่อผู้ดูแลต่อรอบ)
+     * โหมดทดสอบส่งไปที่อยู่ทดสอบอย่างเดียว ไม่แสดงชื่อจริง ผู้ดูแลที่ตั้งไว้ไม่ถูกต้องข้ามไป
+     *
+     * @param  list<array{name: string, items: list<array{kind: string, expires_on: string, days_left: int}>}>  $people
+     * @param  list<array{name: string, reason: string}>  $problems
+     */
+    private function sendDigest(array $people, array $problems, string $testRecipient): int
+    {
+        if ($people === []) {
+            return 0;
+        }
+
+        $test = $testRecipient !== '';
+        $recipients = $test ? [$testRecipient] : (array) config('mail.reminder_admin_recipients', []);
+        $cap = (int) config('mail.daily_cap_for_reminders', 40);
+        $sent = 0;
+
+        foreach (array_unique($recipients) as $to) {
+            if (! filter_var($to, FILTER_VALIDATE_EMAIL) || ! MailQuota::canUse(1, $cap)) {
+                continue;
+            }
+
+            try {
+                SafeMail::send($to, new CredentialDigestMail($people, $problems, $test)) && $sent++;
+            } catch (Throwable $e) {
+                Log::error('Credential digest crashed while sending', ['exception' => $e::class]);
+            }
+        }
+
+        return $sent;
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\RoleEnum;
+use App\Mail\CredentialDigestMail;
 use App\Mail\CredentialExpiryMail;
 use App\Models\CredentialReminder;
 use App\Models\User;
@@ -28,7 +29,7 @@ class CredentialReminderTest extends TestCase
 
         $this->seedReferenceData();
         Cache::flush();
-        config(['mail.reminder_test_recipient' => null, 'mail.daily_cap_for_reminders' => 40]);
+        config(['mail.reminder_test_recipient' => null, 'mail.daily_cap_for_reminders' => 40, 'mail.reminder_admin_recipients' => []]);
         $this->today = Carbon::parse('2026-10-19', 'Asia/Bangkok');
     }
 
@@ -204,6 +205,84 @@ class CredentialReminderTest extends TestCase
             [['name' => 'น.ต.ไม่มี ในระบบ', 'reason' => 'ไม่พบบัญชีที่ชื่อตรงกัน'], ['name' => 'ร.ท.มาลี สุขใจ', 'reason' => 'บัญชีไม่มีอีเมลที่ใช้ได้']],
             $result['problems']
         );
+    }
+
+    public function test_admin_gets_one_digest_per_run_listing_everyone_reminded_and_problems(): void
+    {
+        Mail::fake();
+        config(['mail.reminder_admin_recipients' => ['boss@example.com']]);
+        $this->person();
+        $this->person('มาลี', 'สุขใจ', 'malee@example.com');
+
+        $result = $this->remind([
+            $this->row('น.ต.สมคิด สุนทรเพราะ', ['licence' => '2026-12-01']),
+            $this->row('ร.ท.มาลี สุขใจ', ['medical' => '2026-11-01']),
+            $this->row('ร.ท.ไม่มี ในระบบ', ['rating' => '2026-11-01']),
+        ]);
+
+        $this->assertSame(2, $result['sent']);
+        $this->assertSame(1, $result['digests']);
+        Mail::assertSent(CredentialExpiryMail::class, 2);
+        Mail::assertSent(CredentialDigestMail::class, 1);
+        Mail::assertSent(CredentialDigestMail::class, function (CredentialDigestMail $mail) {
+            $html = $mail->render();
+
+            return $mail->hasTo('boss@example.com')
+                && count($mail->people) === 2
+                && str_contains($html, 'สมคิด') && str_contains($html, 'มาลี')
+                && str_contains($html, 'ไม่มี ในระบบ') && str_contains($html, 'ไม่พบบัญชีที่ชื่อตรงกัน');
+        });
+    }
+
+    public function test_no_digest_when_nobody_was_reminded(): void
+    {
+        Mail::fake();
+        config(['mail.reminder_admin_recipients' => ['boss@example.com']]);
+        $this->person();
+        $row = $this->row('น.ต.สมคิด สุนทรเพราะ', ['licence' => '2026-12-01']);
+
+        $this->remind([$row]);
+        $second = $this->remind([$row]);
+
+        $this->assertSame(0, $second['digests']);
+        Mail::assertSent(CredentialDigestMail::class, 1);
+    }
+
+    public function test_dry_run_sends_no_digest(): void
+    {
+        Mail::fake();
+        config(['mail.reminder_admin_recipients' => ['boss@example.com']]);
+        $this->person();
+
+        $this->remind([$this->row('น.ต.สมคิด สุนทรเพราะ', ['licence' => '2026-12-01'])], dry: true);
+
+        Mail::assertNothingSent();
+    }
+
+    public function test_test_mode_digest_goes_to_the_test_address_without_names(): void
+    {
+        Mail::fake();
+        config(['mail.reminder_admin_recipients' => ['boss@example.com'], 'mail.reminder_test_recipient' => 'qa@example.com']);
+        $this->person();
+
+        $this->remind([$this->row('น.ต.สมคิด สุนทรเพราะ', ['licence' => '2026-12-01'])]);
+
+        Mail::assertSent(CredentialDigestMail::class, fn (CredentialDigestMail $mail) => $mail->hasTo('qa@example.com')
+            && ! $mail->hasTo('boss@example.com')
+            && ! str_contains($mail->render(), 'สมคิด'));
+    }
+
+    public function test_invalid_admin_address_is_ignored_and_people_are_still_reminded(): void
+    {
+        Mail::fake();
+        config(['mail.reminder_admin_recipients' => ['not-an-email']]);
+        $this->person();
+
+        $result = $this->remind([$this->row('น.ต.สมคิด สุนทรเพราะ', ['licence' => '2026-12-01'])]);
+
+        $this->assertSame(1, $result['sent']);
+        $this->assertSame(0, $result['digests']);
+        Mail::assertNotSent(CredentialDigestMail::class);
     }
 
     public function test_sheet_failure_propagates_and_sends_nothing(): void

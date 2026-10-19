@@ -45,12 +45,13 @@ class RemindCredentials extends Command
                 $this->warn("ส่งไม่ได้: {$problem['name']} ({$problem['reason']})");
             }
 
-            $this->info('[dry-run] จะส่ง ' . count($result['plan']) . ' คน ไม่ได้ส่งและไม่ได้บันทึกอะไร');
+            $admins = count((array) config('mail.reminder_admin_recipients', []));
+            $this->info('[dry-run] จะส่ง ' . count($result['plan']) . ' คน' . ($result['plan'] !== [] ? " และส่งสรุปให้ผู้ดูแล {$admins} ที่อยู่" : '') . ' ไม่ได้ส่งและไม่ได้บันทึกอะไร');
 
             return self::SUCCESS;
         }
 
-        $this->info("ส่งแล้ว {$result['sent']} ฉบับ, ข้าม {$result['skipped']}, ล้มเหลว {$result['failed']}, ส่งไม่ได้ " . count($result['problems']) . ' คน');
+        $this->info("ส่งแล้ว {$result['sent']} ฉบับ, ข้าม {$result['skipped']}, ล้มเหลว {$result['failed']}, สรุปให้ผู้ดูแล {$result['digests']}, ส่งไม่ได้ " . count($result['problems']) . ' คน');
 
         return self::SUCCESS;
     }
