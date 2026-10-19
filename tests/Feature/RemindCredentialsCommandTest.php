@@ -16,6 +16,8 @@ class RemindCredentialsCommandTest extends TestCase
 {
     use RefreshDatabase;
 
+    private string $sheetBody;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -32,7 +34,8 @@ class RemindCredentialsCommandTest extends TestCase
             . "n,Name of Holder,Rating Expiry,Validity of licence,Validity of Medical Class 3,Valid Until\n"
             . "1,น.ต.สมคิด สุนทรเพราะ,\"August 31, 2029\",\"December 1, 2026\",\"September 16, 2029\",\"June 27, 2029\"\n";
 
-        Http::fake(['docs.google.com/*' => Http::response($csv)]);
+        $this->sheetBody = $csv;
+        Http::fake(['docs.google.com/*' => fn () => Http::response($this->sheetBody)]);
     }
 
     protected function tearDown(): void
@@ -71,9 +74,8 @@ class RemindCredentialsCommandTest extends TestCase
     public function test_sheet_failure_exits_1_with_a_thai_message(): void
     {
         Mail::fake();
-        // stub แรกใน setUp ชนะเสมอ จึงต้องล้างก่อนจำลองชีตที่ถูกจำกัดสิทธิ์
-        Http::clearResolvedInstances();
-        Http::fake(['docs.google.com/*' => Http::response('<html>Sign in</html>')]);
+        // จำลองชีตที่ถูกจำกัดสิทธิ์ (Google ตอบหน้า HTML)
+        $this->sheetBody = '<html>Sign in</html>';
 
         $this->artisan('credentials:remind')
             ->expectsOutputToContain('อ่านชีตไม่สำเร็จ')
