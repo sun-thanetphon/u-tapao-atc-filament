@@ -22,13 +22,13 @@ class TutorialVideoResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-video-camera';
 
-    protected static ?string $navigationGroup = 'Tasks & Acknowledgements';
+    protected static ?string $navigationGroup = 'Public Links';
 
     protected static ?string $navigationLabel = 'จัดการวิดีโอแนะนำ';
 
     protected static ?string $modelLabel = 'วิดีโอแนะนำ';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     public static function canAccess(): bool
     {
