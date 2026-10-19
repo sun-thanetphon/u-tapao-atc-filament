@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Enums\RoleEnum;
 use App\Http\Responses\CustomLoginResponse;
 use Illuminate\Support\ServiceProvider;
+use App\Listeners\LoginLogSubscriber;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Facades\Filament;
@@ -34,6 +36,8 @@ class AppServiceProvider extends ServiceProvider
 
         // เชื่อม Route filament กับ route web
         Authenticate::redirectUsing(fn() => Filament::getCurrentPanel()->route('auth.login'));
+
+        Event::subscribe(LoginLogSubscriber::class);
 
         Gate::before(function ($user, $ability) {
             return $user->hasRole(RoleEnum::SUPERADMIN) ? true : null;
