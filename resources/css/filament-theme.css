@@ -1942,3 +1942,21 @@ a.uta-study-subject:focus-visible {
     font-weight: 600;
     opacity: 0.8;
 }
+
+/* วิดีโอแนะนำ */
+.uta-video-player {
+    display: block;
+    width: 100%;
+    max-width: 56rem;
+    aspect-ratio: 16 / 9;
+    margin: 0.75rem 0;
+    border: 0;
+    border-radius: 0.5rem;
+    background: #000;
+}
+
+.uta-video-draft {
+    font-size: 0.875rem;
+    font-weight: 400;
+    opacity: 0.7;
+}

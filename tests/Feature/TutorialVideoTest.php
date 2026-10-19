@@ -1,0 +1,120 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\RoleEnum;
+use App\Models\TutorialVideo;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
+
+/**
+ * วิดีโอแนะนำ: ทุกคนที่ล็อกอินดูได้ เฉพาะแอดมินจัดการได้
+ */
+class TutorialVideoTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seedReferenceData();
+
+        Storage::fake('local');
+        Storage::disk('local')->put('tutorials/intro.mp4', 'fake-mp4-bytes');
+    }
+
+    private function uploaded(array $attributes = []): TutorialVideo
+    {
+        return TutorialVideo::create([
+            'title' => 'วิธีรับทราบเอกสาร',
+            'source' => 'upload',
+            'file_path' => 'tutorials/intro.mp4',
+            'seq' => 1,
+            'publish' => true,
+            ...$attributes,
+        ]);
+    }
+
+    public function test_logged_in_user_can_stream_an_uploaded_video(): void
+    {
+        $video = $this->uploaded();
+        $this->actingAs($this->makeUser($this->section('ADC')));
+
+        $this->get("/tutorial-video/{$video->id}")
+            ->assertOk()
+            ->assertHeader('Content-Type', 'video/mp4')
+            // ไม่มี Content-Length แล้ว CDN ของ Hostinger ส่งไฟล์ค้างกลางทาง
+            ->assertHeader('Content-Length', (string) strlen('fake-mp4-bytes'))
+            ->assertHeader('Accept-Ranges', 'bytes');
+    }
+
+    public function test_guest_cannot_stream_a_video(): void
+    {
+        $video = $this->uploaded();
+
+        $this->get("/tutorial-video/{$video->id}")->assertRedirect();
+        $this->assertGuest();
+    }
+
+    public function test_unpublished_video_is_only_for_admins(): void
+    {
+        $video = $this->uploaded(['publish' => false]);
+
+        $this->actingAs($this->makeUser($this->section('ADC')));
+        $this->get("/tutorial-video/{$video->id}")->assertNotFound();
+
+        $this->actingAs($this->makeUser($this->section('APP'), RoleEnum::ADMIN));
+        $this->get("/tutorial-video/{$video->id}")->assertOk();
+    }
+
+    public function test_embedded_video_has_no_file_to_stream(): void
+    {
+        $video = $this->uploaded(['source' => 'embed', 'file_path' => null, 'embed_url' => 'https://youtu.be/dQw4w9WgXcQ']);
+        $this->actingAs($this->makeUser($this->section('ADC')));
+
+        $this->get("/tutorial-video/{$video->id}")->assertNotFound();
+    }
+
+    public function test_embed_url_is_converted_only_for_known_hosts(): void
+    {
+        $embed = fn (string $url) => (new TutorialVideo(['source' => 'embed', 'embed_url' => $url]))->embedSrc();
+
+        $this->assertSame('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ', $embed('https://youtu.be/dQw4w9WgXcQ'));
+        $this->assertSame('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ', $embed('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=5'));
+        $this->assertSame('https://player.vimeo.com/video/123456789', $embed('https://vimeo.com/123456789'));
+        $this->assertNull($embed('https://evil.example.com/watch?v=abc'));
+        $this->assertNull($embed('javascript:alert(1)'));
+    }
+
+    public function test_user_sees_published_videos_on_the_page(): void
+    {
+        $this->uploaded(['title' => 'คลิปที่เห็นได้']);
+        $this->uploaded(['title' => 'คลิปที่ซ่อน', 'publish' => false]);
+        $this->uploaded(['title' => 'คลิป YouTube', 'source' => 'embed', 'file_path' => null, 'embed_url' => 'https://youtu.be/dQw4w9WgXcQ']);
+        $this->actingAs($this->makeUser($this->section('ADC')));
+
+        $this->get('/admin/tutorial-videos')
+            ->assertOk()
+            ->assertSee('คลิปที่เห็นได้')
+            ->assertSee('คลิป YouTube')
+            ->assertSee('youtube-nocookie.com/embed/dQw4w9WgXcQ', false)
+            ->assertDontSee('คลิปที่ซ่อน');
+    }
+
+    public function test_regular_user_cannot_open_the_manage_page(): void
+    {
+        $this->actingAs($this->makeUser($this->section('ADC')));
+
+        $this->get('/admin/manage-tutorial-videos')->assertForbidden();
+    }
+
+    public function test_admin_can_open_the_manage_page(): void
+    {
+        $this->uploaded(['title' => 'คลิปที่ซ่อน', 'publish' => false]);
+        $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::ADMIN));
+
+        $this->get('/admin/manage-tutorial-videos')->assertOk()->assertSee('คลิปที่ซ่อน');
+    }
+}

@@ -48,3 +48,21 @@ Route::get('/documents/{document}/follow/print', function (\App\Models\Document 
         'users' => (new \App\Exports\FollowExport($document))->users(),
     ]);
 })->middleware('web')->name('follow.print');
+
+// วิดีโอแนะนำที่อัปโหลดไว้ ส่งผ่าน PHP เพื่อให้เฉพาะผู้ล็อกอินดูได้ (ไฟล์อยู่นอก web root)
+// ใช้ response()->file() ให้มี Content-Length และรองรับ Range (กรอวิดีโอได้) ไม่งั้น CDN ของ Hostinger ส่งไฟล์ค้าง
+Route::get('/tutorial-video/{video}', function (\App\Models\TutorialVideo $video) {
+    if (!Auth::check()) {
+        return redirect()->intended('admin');
+    }
+
+    $canSeeDrafts = Auth::user()->hasAnyRole([\App\Enums\RoleEnum::SUPERADMIN, \App\Enums\RoleEnum::ADMIN]);
+
+    if (!$video->isUpload() || !($video->publish || $canSeeDrafts) || !Storage::disk('local')->exists((string) $video->file_path)) {
+        abort(404);
+    }
+
+    return response()->file(Storage::disk('local')->path($video->file_path), [
+        'Content-Type' => $video->mimeType(),
+    ]);
+})->name('view.tutorial-video');
