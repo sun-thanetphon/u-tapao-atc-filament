@@ -95,9 +95,13 @@ class DocumentResource extends Resource
                     ->maxSize(104857600)
                     ->maxFiles(1)
                     ->required(),
-                Forms\Components\Toggle::make('require_reacknowledge')
-                    ->label('ต้องรับทราบใหม่เมื่อเปลี่ยนไฟล์')
-                    ->helperText('ปิดถ้าเป็นการแก้ไขเล็กน้อย เช่น แก้คำผิด ผู้ที่รับทราบแล้วจะไม่ต้องรับทราบซ้ำ และไม่ส่งอีเมลแจ้งใหม่')
+                Forms\Components\ToggleButtons::make('require_reacknowledge')
+                    ->label('ถ้าเปลี่ยนไฟล์ ผู้ใช้ต้องรับทราบใหม่หรือไม่?')
+                    ->helperText('เลือก "ไม่ต้อง" ถ้าเป็นการแก้ไขเล็กน้อย เช่น แก้คำผิด ผู้ที่รับทราบแล้วจะไม่ต้องรับทราบซ้ำ และไม่ส่งอีเมลแจ้งใหม่')
+                    ->boolean('ต้องรับทราบใหม่', 'ไม่ต้อง (แก้ไขเล็กน้อย)')
+                    ->colors([1 => 'warning', 0 => 'info'])
+                    ->icons([1 => 'heroicon-m-arrow-path', 0 => 'heroicon-m-pencil'])
+                    ->grouped()
                     // หน้าแก้ไขเติมค่าจาก record ซึ่งไม่มีคอลัมน์นี้ จึงต้องตั้งค่าเริ่มต้นตรงนี้แทน default()
                     ->formatStateUsing(fn (): bool => true)
                     // ไม่ใช่คอลัมน์ในฐานข้อมูล: อ่านค่าจากฟอร์มก่อนบันทึกแทน
@@ -107,17 +111,22 @@ class DocumentResource extends Resource
                 Forms\Components\Section::make()
                     ->description('ต้องการประกาศให้เป็นสาธารณะหรือไม่?')
                     ->schema([
-                        Forms\Components\Toggle::make('publish')
-                            ->onIcon('heroicon-m-eye')
-                            ->offIcon('heroicon-m-x-circle')
-                            ->onColor('success')
-                            ->offColor('danger')
+                        Forms\Components\ToggleButtons::make('publish')
+                            ->label('การเผยแพร่')
+                            ->boolean('เผยแพร่', 'ซ่อน')
+                            ->icons([1 => 'heroicon-m-eye', 0 => 'heroicon-m-eye-slash'])
+                            ->grouped()
+                            ->required()
                             ->default(true),
-                        Forms\Components\Toggle::make('send_notification')
+                        Forms\Components\ToggleButtons::make('send_notification')
                             ->label('ส่งอีเมลแจ้งเตือนผู้ที่ต้องรับทราบ')
-                            ->helperText('ส่งครั้งเดียวเมื่อเผยแพร่เอกสารที่ต้องรับทราบ ถ้าไม่ติ๊กตอนนี้ ยังติ๊กส่งภายหลังจากหน้าแก้ไขได้')
-                            // หน้าสร้างติ๊กไว้ให้ ส่วนหน้าแก้ไขต้องติ๊กเอง กันส่งอีเมลโดยไม่ตั้งใจ
-                            ->default(fn (?Document $record): bool => $record === null)
+                            ->helperText('ส่งครั้งเดียวเมื่อเผยแพร่เอกสารที่ต้องรับทราบ ถ้าเลือก "ไม่ส่ง" ตอนนี้ ยังเลือกส่งภายหลังจากหน้าแก้ไขได้')
+                            ->boolean('ส่ง', 'ไม่ส่ง')
+                            ->icons([1 => 'heroicon-m-envelope', 0 => 'heroicon-m-x-mark'])
+                            ->grouped()
+                            // หน้าสร้างเลือกส่งไว้ให้ ส่วนหน้าแก้ไขต้องเลือกเอง กันส่งอีเมลโดยไม่ตั้งใจ
+                            // ใช้ formatStateUsing แทน default() เพราะหน้าแก้ไขเติมค่าจาก record ซึ่งไม่มีคอลัมน์นี้
+                            ->formatStateUsing(fn (?Document $record): bool => $record === null)
                             // ไม่ใช่คอลัมน์ในฐานข้อมูล: อ่านค่าจากฟอร์มหลังบันทึกแทน
                             ->dehydrated(false)
                             // ส่งแล้วจะไม่ส่งซ้ำอีก

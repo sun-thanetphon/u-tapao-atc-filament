@@ -54,13 +54,13 @@ class PublicUrlResource extends Resource
                             ->numeric()
                             ->minValue(1)
                             ->default(1),
-                        Forms\Components\Toggle::make('publish')
+                        Forms\Components\ToggleButtons::make('publish')
+                            ->label('การเผยแพร่')
+                            ->boolean('เผยแพร่', 'ซ่อน')
+                            ->icons([1 => 'heroicon-m-eye', 0 => 'heroicon-m-eye-slash'])
+                            ->grouped()
                             ->required()
                             ->default(true)
-                            ->onIcon('heroicon-o-eye') // กำหนดไอคอนเมื่อเปิด (เมื่อค่าเป็น true)
-                            ->offIcon('heroicon-o-x-mark')    // กำหนดไอคอนเมื่อปิด (เมื่อค่าเป็น false)
-                            ->onColor('success')        // กำหนดสีเมื่อเปิด (สามารถใช้สีเช่น success, danger, info, etc.)
-                            ->offColor('danger')
                             ->columnSpanFull(),
                         Forms\Components\Textarea::make('desc')
                             ->columnSpanFull(),

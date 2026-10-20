@@ -83,8 +83,12 @@ class TutorialVideoResource extends Resource
                             ->numeric()
                             ->minValue(1)
                             ->default(1),
-                        Forms\Components\Toggle::make('publish')
-                            ->label('เผยแพร่')
+                        Forms\Components\ToggleButtons::make('publish')
+                            ->label('การเผยแพร่')
+                            ->boolean('เผยแพร่', 'ซ่อน')
+                            ->icons([1 => 'heroicon-m-eye', 0 => 'heroicon-m-eye-slash'])
+                            ->grouped()
+                            ->required()
                             ->default(true)
                             ->columnSpanFull(),
                     ])->columns(2),
