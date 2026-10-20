@@ -51,6 +51,11 @@ class DocumentObserver
         if ($document->isDirty('file_path')) {
             Storage::disk('local')->delete($document->getOriginal('file_path'));
 
+            // ผู้แก้เลือกว่าไม่ต้องรับทราบใหม่ (เช่น แก้คำผิด): คงรอบเดิมและสถานะอีเมลเดิม
+            if ($document->keepRevision) {
+                return;
+            }
+
             // ไฟล์เปลี่ยน = เอกสารฉบับใหม่ ต้องรับทราบรอบใหม่ (ประวัติรอบเก่ายังอยู่ที่ document_acknowledges)
             // และเปิดให้ส่งอีเมลแจ้งเตือนอีกครั้ง
             $document->revision = (int) $document->getOriginal('revision') + 1;

@@ -95,6 +95,15 @@ class DocumentResource extends Resource
                     ->maxSize(104857600)
                     ->maxFiles(1)
                     ->required(),
+                Forms\Components\Toggle::make('require_reacknowledge')
+                    ->label('ต้องรับทราบใหม่เมื่อเปลี่ยนไฟล์')
+                    ->helperText('ปิดถ้าเป็นการแก้ไขเล็กน้อย เช่น แก้คำผิด ผู้ที่รับทราบแล้วจะไม่ต้องรับทราบซ้ำ และไม่ส่งอีเมลแจ้งใหม่')
+                    // หน้าแก้ไขเติมค่าจาก record ซึ่งไม่มีคอลัมน์นี้ จึงต้องตั้งค่าเริ่มต้นตรงนี้แทน default()
+                    ->formatStateUsing(fn (): bool => true)
+                    // ไม่ใช่คอลัมน์ในฐานข้อมูล: อ่านค่าจากฟอร์มก่อนบันทึกแทน
+                    ->dehydrated(false)
+                    // มีผลเฉพาะตอนแก้ไขเอกสารที่ต้องรับทราบ
+                    ->visible(fn (?Document $record): bool => $record?->isNeedToAck() ?? false),
                 Forms\Components\Section::make()
                     ->description('ต้องการประกาศให้เป็นสาธารณะหรือไม่?')
                     ->schema([
@@ -189,6 +198,10 @@ class DocumentResource extends Resource
                         ->label('ติดตามการรับทราบ')
                         ->url(fn(Document $record): string => route('filament.admin.resources.documents.follow', $record)),
                     Tables\Actions\EditAction::make()
+                        ->before(function (Document $record, $livewire): void {
+                            $raw = $livewire->getMountedTableActionForm()?->getRawState() ?? [];
+                            $record->keepRevision = ! ($raw['require_reacknowledge'] ?? true);
+                        })
                         ->after(function (Document $record, $livewire): void {
                             app(DocumentNotifier::class)->notify($record, DocumentNotifier::wantedIn($livewire->getMountedTableActionForm()));
                         }),

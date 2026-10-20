@@ -26,6 +26,11 @@ class Document extends Model
         'revision' => 1,
     ];
 
+    /**
+     * เปลี่ยนไฟล์แบบแก้ไขเล็กน้อย: ไม่ขึ้นรอบใหม่ ผู้ที่รับทราบแล้วไม่ต้องรับทราบซ้ำ (ไม่ใช่คอลัมน์ในฐานข้อมูล)
+     */
+    public bool $keepRevision = false;
+
     protected $casts = [
         'view_sections' => 'array',
         'acknowledge_sections' => 'array',

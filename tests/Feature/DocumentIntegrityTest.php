@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RoleEnum;
+use App\Filament\Resources\DocumentResource\Pages\ListDocuments;
 use App\Filament\Resources\DocumentTaskResource\Pages\ListDocumentTasks;
 use App\Models\Document;
 use App\Models\DocumentAcknowledge;
 use App\Support\AcknowledgeStats;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -112,6 +115,47 @@ class DocumentIntegrityTest extends TestCase
             [1, 2],
             DocumentAcknowledge::where('document_id', $document->id)->orderBy('revision')->pluck('revision')->all(),
         );
+    }
+
+    public function test_minor_file_change_can_keep_the_current_acknowledgements(): void
+    {
+        $member = $this->makeUser($this->section('ADC'));
+        $document = $this->makeDocument([$this->section('ADC')], [$this->section('ADC')]);
+        $document->forceFill(['notified_at' => now()])->saveQuietly();
+        $document->acknowledges()->create(['user_id' => $member->id, 'acknowledge_date' => now()]);
+
+        $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::ADMIN));
+
+        Livewire::test(ListDocuments::class)
+            ->callTableAction('edit', $document, [
+                'file_path' => UploadedFile::fake()->create('fixed.pdf', 10, 'application/pdf'),
+                'require_reacknowledge' => false,
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $document->refresh();
+        $this->assertNotSame('documents/test.pdf', $document->file_path);
+        $this->assertSame(1, $document->revision);
+        $this->assertNotNull($document->notified_at, 'แก้ไขเล็กน้อยต้องไม่เปิดให้ส่งอีเมลซ้ำ');
+        $this->assertTrue($member->isAcknowledged($document->id, $document->revision));
+    }
+
+    public function test_file_change_from_the_form_requires_a_new_acknowledgement_by_default(): void
+    {
+        $document = $this->makeDocument([$this->section('ADC')], [$this->section('ADC')]);
+        $document->forceFill(['notified_at' => now()])->saveQuietly();
+
+        $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::ADMIN));
+
+        Livewire::test(ListDocuments::class)
+            ->callTableAction('edit', $document, [
+                'file_path' => UploadedFile::fake()->create('new.pdf', 10, 'application/pdf'),
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $document->refresh();
+        $this->assertSame(2, $document->revision);
+        $this->assertNull($document->notified_at);
     }
 
     public function test_dashboard_stats_count_only_acknowledgements_of_the_current_revision(): void
