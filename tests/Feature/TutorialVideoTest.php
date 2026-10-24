@@ -50,22 +50,23 @@ class TutorialVideoTest extends TestCase
             ->assertHeader('Accept-Ranges', 'bytes');
     }
 
-    public function test_range_requests_are_capped_to_one_megabyte(): void
+    public function test_range_requests_are_capped_to_256_kilobytes(): void
     {
-        // CDN ของ Hostinger ส่งคำตอบก้อนใหญ่จาก PHP ค้าง จึงตอบทีละไม่เกิน 1 MB ให้เบราว์เซอร์ขอต่อเอง
-        $size = 3 * 1024 * 1024;
+        // CDN ของ Hostinger ส่งคำตอบก้อนใหญ่จาก PHP ค้าง จึงตอบทีละไม่เกิน 256 KB ให้เบราว์เซอร์ขอต่อเอง
+        $size = 1024 * 1024;
         Storage::disk('local')->put('tutorials/intro.mp4', str_repeat('x', $size));
         $video = $this->uploaded();
         $this->actingAs($this->makeUser($this->section('ADC')));
 
         $this->get("/tutorial-video/{$video->id}", ['Range' => 'bytes=0-'])
             ->assertStatus(206)
-            ->assertHeader('Content-Range', 'bytes 0-1048575/' . $size)
-            ->assertHeader('Content-Length', '1048576');
+            ->assertHeader('Content-Range', 'bytes 0-262143/' . $size)
+            ->assertHeader('Content-Length', '262144');
 
-        $this->get("/tutorial-video/{$video->id}", ['Range' => 'bytes=2097152-'])
+        // ก้อนท้ายไฟล์สั้นกว่า 256 KB ได้
+        $this->get("/tutorial-video/{$video->id}", ['Range' => 'bytes=917504-'])
             ->assertStatus(206)
-            ->assertHeader('Content-Range', 'bytes 2097152-3145727/' . $size);
+            ->assertHeader('Content-Range', 'bytes 917504-1048575/' . $size);
 
         $this->get("/tutorial-video/{$video->id}", ['Range' => 'bytes=100-199'])
             ->assertStatus(206)
