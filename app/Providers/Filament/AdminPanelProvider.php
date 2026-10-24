@@ -73,7 +73,11 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn(): HtmlString => new HtmlString('<style>' . file_get_contents(resource_path('css/filament-theme.css')) . '</style>'),
+                fn(): HtmlString => new HtmlString(
+                    // ฟอนต์ของชื่อหน่วยข้างตรา (ใช้แค่ตรงนั้น)
+                    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700&display=swap">'
+                    . '<style>' . file_get_contents(resource_path('css/filament-theme.css')) . '</style>'
+                ),
             )
             // Filament จำสถานะเมนูข้างเป็น "เปิด" ไว้ตั้งแต่แรก บนมือถือเมนูจึงเปิดทับเนื้อหาทุกครั้งที่โหลดหน้า ให้ปิดไว้ก่อน
             ->renderHook(
@@ -93,7 +97,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             // local รันบน http จึงใช้ https ไม่ได้
             ->favicon(app()->isLocal() ? asset('assets/images/u-tapao-circle.png') : secure_asset('assets/images/u-tapao-circle.png'))
-            ->brandLogo(asset('assets/images/u-tapao-circle.png'))
+            ->brandLogo(fn() => view('filament.brand-logo'))
             ->brandLogoHeight(fn() => request()->routeIs('filament.admin.auth.login') ? '10rem' : '3rem')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')

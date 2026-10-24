@@ -19,7 +19,7 @@
         @endif
     </article>
 
-    <x-filament::button tag="a" href="{{ url('/admin/learning-video') }}" color="gray" icon="heroicon-m-arrow-left">
+    <x-filament::button tag="a" href="{{ url('/admin/learning-video') }}" color="gray" icon="heroicon-m-arrow-left" class="uta-video-back">
         กลับไปรายการ
     </x-filament::button>
 
