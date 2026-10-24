@@ -4,14 +4,20 @@
         <p class="uta-expiry-note">
             อ่านจากชีตผู้ถือใบอนุญาตของหน่วย (แก้ข้อมูลที่ชีต) ระบบส่งอีเมลเตือนเจ้าตัวเมื่อเหลือ 3 เดือน, 2 เดือน และ 1 เดือน ก่อนหมดอายุ
         </p>
-        <div class="uta-expiry-actions">
-            <x-filament::button color="gray" icon="heroicon-m-arrow-path" wire:click="refreshSheet">
-                รีเฟรชจากชีต
-            </x-filament::button>
-            <x-filament::button color="gray" icon="heroicon-m-envelope" wire:click="sendTest">
-                ส่งอีเมลตัวอย่างถึงฉัน
-            </x-filament::button>
-        </div>
+        @if ($canRefresh || $canSendTest)
+            <div class="uta-expiry-actions">
+                @if ($canRefresh)
+                    <x-filament::button color="gray" icon="heroicon-m-arrow-path" wire:click="refreshSheet">
+                        รีเฟรชจากชีต
+                    </x-filament::button>
+                @endif
+                @if ($canSendTest)
+                    <x-filament::button color="gray" icon="heroicon-m-envelope" wire:click="sendTest">
+                        ส่งอีเมลตัวอย่างถึงฉัน
+                    </x-filament::button>
+                @endif
+            </div>
+        @endif
     </div>
 
     @if ($error)

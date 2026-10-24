@@ -19,13 +19,16 @@ use Throwable;
 
 /**
  * ดูวันหมดอายุใบอนุญาต/ใบรับรองแพทย์/rating/ภาษา จากชีต (อ่านอย่างเดียว แก้ที่ชีต)
- * เห็นเฉพาะ super-admin และ admin เพราะมีข้อมูลสุขภาพ
+ * ผู้ใช้ที่ล็อกอินทุกคนดูรายการได้ ปุ่มรีเฟรช/ส่งเมลตัวอย่างจำกัดสิทธิ์ตามด้านล่าง
  */
 class CredentialExpiry extends Page
 {
     private const CACHE_KEY = 'credential-sheet-rows';
 
     private const CACHE_SECONDS = 600;
+
+    /** admin ที่ได้สิทธิ์รีเฟรชชีตด้วย (ร.ท.ลิขิต ร่วมสุข) */
+    private const SHEET_REFRESH_ADMIN_USERNAME = 'limaromeo';
 
     protected static ?string $navigationIcon = 'heroicon-o-identification';
 
@@ -41,7 +44,30 @@ class CredentialExpiry extends Page
 
     public static function canAccess(): bool
     {
-        return (bool) auth()->user()?->hasAnyRole([RoleEnum::SUPERADMIN, RoleEnum::ADMIN]);
+        return auth()->check();
+    }
+
+    /**
+     * รีเฟรชจากชีต: super-admin และ admin ลิขิต เท่านั้น
+     */
+    public static function canRefreshSheet(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasRole(RoleEnum::SUPERADMIN)
+            || ($user->hasRole(RoleEnum::ADMIN) && $user->username === self::SHEET_REFRESH_ADMIN_USERNAME);
+    }
+
+    /**
+     * ส่งอีเมลตัวอย่าง: super-admin เท่านั้น
+     */
+    public static function canSendTest(): bool
+    {
+        return (bool) auth()->user()?->hasRole(RoleEnum::SUPERADMIN);
     }
 
     /**
@@ -52,7 +78,7 @@ class CredentialExpiry extends Page
         try {
             $rows = Cache::remember(self::CACHE_KEY, self::CACHE_SECONDS, fn () => CredentialSheet::fetch());
         } catch (CredentialSheetException $e) {
-            return ['error' => $e->getMessage(), 'items' => [], 'problems' => []];
+            return ['error' => $e->getMessage(), 'items' => [], 'problems' => []] + $this->buttonFlags();
         }
 
         $matcher = new CredentialMatcher();
@@ -100,11 +126,21 @@ class CredentialExpiry extends Page
 
         usort($items, fn (array $a, array $b) => $a['days_left'] <=> $b['days_left']);
 
-        return ['error' => null, 'items' => $items, 'problems' => $problems];
+        return ['error' => null, 'items' => $items, 'problems' => $problems] + $this->buttonFlags();
+    }
+
+    /**
+     * @return array{canRefresh: bool, canSendTest: bool}
+     */
+    private function buttonFlags(): array
+    {
+        return ['canRefresh' => static::canRefreshSheet(), 'canSendTest' => static::canSendTest()];
     }
 
     public function refreshSheet(): void
     {
+        abort_unless(static::canRefreshSheet(), 403);
+
         Cache::forget(self::CACHE_KEY);
     }
 
@@ -113,7 +149,7 @@ class CredentialExpiry extends Page
      */
     public function sendTest(): void
     {
-        abort_unless(static::canAccess(), 403);
+        abort_unless(static::canSendTest(), 403);
 
         $user = auth()->user();
         $email = trim((string) $user->email);

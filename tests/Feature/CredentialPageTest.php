@@ -55,19 +55,111 @@ class CredentialPageTest extends TestCase
         return $user;
     }
 
-    public function test_only_admin_and_super_admin_can_access(): void
+    private function likhit(): User
     {
-        $section = $this->section('ADC');
+        $user = $this->makeUser($this->section('ADC'), RoleEnum::ADMIN);
+        $user->forceFill(['username' => 'limaromeo'])->save();
 
-        $this->actingAs($this->makeUser($section, RoleEnum::USER));
+        return $user;
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function roles(): array
+    {
+        return ['user' => [RoleEnum::USER], 'admin' => [RoleEnum::ADMIN], 'super-admin' => [RoleEnum::SUPERADMIN]];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('roles')]
+    public function test_every_logged_in_user_can_view_the_list(string $role): void
+    {
+        $this->actingAs($this->makeUser($this->section('ADC'), $role));
+
+        $this->assertTrue(CredentialExpiry::canAccess());
+        $this->assertTrue(CredentialExpiry::shouldRegisterNavigation());
+        $this->get(CredentialExpiry::getUrl())->assertOk()->assertSee('รายการวันหมดอายุ');
+    }
+
+    public function test_guest_cannot_view_the_list(): void
+    {
         $this->assertFalse(CredentialExpiry::canAccess());
-        $this->get(CredentialExpiry::getUrl())->assertForbidden();
+        $this->get(CredentialExpiry::getUrl())->assertRedirect();
+    }
 
-        $this->actingAs($this->makeUser($section, RoleEnum::ADMIN));
-        $this->assertTrue(CredentialExpiry::canAccess());
+    public function test_user_sees_no_buttons_and_cannot_trigger_actions(): void
+    {
+        Mail::fake();
+        $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::USER));
 
-        $this->actingAs($this->makeUser($section, RoleEnum::SUPERADMIN));
-        $this->assertTrue(CredentialExpiry::canAccess());
+        Livewire::test(CredentialExpiry::class)
+            ->assertSee('รายการวันหมดอายุ')
+            ->assertDontSee('รีเฟรชจากชีต')
+            ->assertDontSee('ส่งอีเมลตัวอย่างถึงฉัน')
+            ->call('refreshSheet')
+            ->assertForbidden();
+
+        Livewire::test(CredentialExpiry::class)->call('sendTest')->assertForbidden();
+        Mail::assertNothingSent();
+    }
+
+    public function test_other_admin_sees_no_buttons_and_cannot_trigger_actions(): void
+    {
+        Mail::fake();
+        $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::ADMIN));
+
+        Livewire::test(CredentialExpiry::class)
+            ->assertDontSee('รีเฟรชจากชีต')
+            ->assertDontSee('ส่งอีเมลตัวอย่างถึงฉัน')
+            ->call('refreshSheet')
+            ->assertForbidden();
+
+        Livewire::test(CredentialExpiry::class)->call('sendTest')->assertForbidden();
+        Mail::assertNothingSent();
+    }
+
+    public function test_likhit_can_refresh_but_not_send_test(): void
+    {
+        Mail::fake();
+        $this->actingAs($this->likhit());
+        Cache::put('credential-sheet-rows', [], 600);
+
+        Livewire::test(CredentialExpiry::class)
+            ->assertSee('รีเฟรชจากชีต')
+            ->assertDontSee('ส่งอีเมลตัวอย่างถึงฉัน')
+            ->call('refreshSheet')
+            ->assertOk();
+
+        // แคชถูกล้าง จึงอ่านชีตใหม่ตอน render รอบหลัง
+        Http::assertSentCount(1);
+
+        Livewire::test(CredentialExpiry::class)->call('sendTest')->assertForbidden();
+        Mail::assertNothingSent();
+    }
+
+    public function test_likhit_username_without_admin_role_cannot_refresh(): void
+    {
+        $user = $this->makeUser($this->section('ADC'), RoleEnum::USER);
+        $user->forceFill(['username' => 'limaromeo'])->save();
+        $this->actingAs($user);
+
+        $this->assertFalse(CredentialExpiry::canRefreshSheet());
+        Livewire::test(CredentialExpiry::class)->call('refreshSheet')->assertForbidden();
+    }
+
+    public function test_super_admin_sees_both_buttons_and_can_refresh(): void
+    {
+        $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::SUPERADMIN));
+        Cache::put('credential-sheet-rows', [], 600);
+
+        Livewire::test(CredentialExpiry::class)
+            ->assertSee('รีเฟรชจากชีต')
+            ->assertSee('ส่งอีเมลตัวอย่างถึงฉัน')
+            ->call('refreshSheet')
+            ->assertOk();
+
+        // แคชถูกล้าง จึงอ่านชีตใหม่ตอน render รอบหลัง
+        Http::assertSentCount(1);
     }
 
     public function test_lists_items_nearest_first_with_reminder_state(): void
@@ -107,7 +199,7 @@ class CredentialPageTest extends TestCase
     {
         Mail::fake();
         $this->holder();
-        $admin = $this->makeUser($this->section('ADC'), RoleEnum::ADMIN);
+        $admin = $this->makeUser($this->section('ADC'), RoleEnum::SUPERADMIN);
         $admin->forceFill(['email' => 'admin@example.com'])->save();
         $this->actingAs($admin);
 
@@ -118,10 +210,10 @@ class CredentialPageTest extends TestCase
         $this->assertSame(0, CredentialReminder::query()->count());
     }
 
-    public function test_send_test_requires_access(): void
+    public function test_send_test_requires_super_admin(): void
     {
         Mail::fake();
-        $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::USER));
+        $this->actingAs($this->likhit());
 
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
 
