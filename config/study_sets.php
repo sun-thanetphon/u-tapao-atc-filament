@@ -9,7 +9,7 @@
 return [
     'exam' => [
         'title' => 'ชุดอ่านสอบเลื่อนฐานะ ATC',
-        'description' => 'วิชาสอบภาคทฤษฎี 8 วิชา ตามประกาศสอบเลื่อนฐานะนายทหารประทวน สายควบคุมการจราจรทางอากาศ',
+        'description' => 'วิชาสอบภาคทฤษฎี 8 วิชา ตามประกาศสอบเลื่อนฐานะ สายควบคุมการจราจรทางอากาศ',
         'subjects' => [
             ['name' => 'Rules of the Air (Annex 2)', 'documents' => [97]],
             ['name' => 'Aeronautical Telecommunications (Annex 10 Vol. 2)', 'documents' => [108, 109]],
