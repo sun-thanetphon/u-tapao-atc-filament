@@ -51,7 +51,9 @@ Route::get('/documents/{document}/follow/print', function (\App\Models\Document 
 
 // วิดีโอแนะนำที่อัปโหลดไว้ ส่งผ่าน PHP เพื่อให้เฉพาะผู้ล็อกอินดูได้ (ไฟล์อยู่นอก web root)
 // ใช้ response()->file() ให้มี Content-Length และรองรับ Range (กรอวิดีโอได้) ไม่งั้น CDN ของ Hostinger ส่งไฟล์ค้าง
-Route::get('/tutorial-video/{video}', function (\App\Models\TutorialVideo $video) {
+// ตัดแต่ละ Range ให้ไม่เกิน 1 MB: CDN ส่งคำตอบจาก PHP ก้อนใหญ่ (เช่น bytes=0- ทั้งไฟล์) ค้างหลังไม่กี่ KB
+// แต่ก้อนเล็กผ่านครบ เบราว์เซอร์ขอส่วนที่เหลือต่อเองจาก Content-Range
+Route::get('/tutorial-video/{video}', function (\Illuminate\Http\Request $request, \App\Models\TutorialVideo $video) {
     if (!Auth::check()) {
         return redirect()->intended('admin');
     }
@@ -60,6 +62,15 @@ Route::get('/tutorial-video/{video}', function (\App\Models\TutorialVideo $video
 
     if (!$video->isUpload() || !($video->publish || $canSeeDrafts) || !Storage::disk('local')->exists((string) $video->file_path)) {
         abort(404);
+    }
+
+    $chunk = 1024 * 1024;
+    if (preg_match('/^bytes=(\d+)-(\d*)$/', (string) $request->headers->get('Range'), $m)) {
+        $end = $m[1] + $chunk - 1;
+        if ($m[2] !== '') {
+            $end = min($end, (int) $m[2]);
+        }
+        $request->headers->set('Range', 'bytes=' . $m[1] . '-' . $end);
     }
 
     return response()->file(Storage::disk('local')->path($video->file_path), [
