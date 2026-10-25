@@ -51,7 +51,7 @@ class TutorialVideo extends Model
     }
 
     /**
-     * ลิงก์สำหรับ iframe รับเฉพาะ YouTube และ Vimeo ที่แปลงเป็นลิงก์ฝังได้ ลิงก์อื่นไม่ฝัง
+     * ลิงก์สำหรับ iframe รับเฉพาะ YouTube, Vimeo และ Google Drive ที่แปลงเป็นลิงก์ฝังได้ ลิงก์อื่นไม่ฝัง
      */
     public function embedSrc(): ?string
     {
@@ -64,6 +64,11 @@ class TutorialVideo extends Model
 
         if (preg_match('~^https://vimeo\.com/(\d+)(?:[/?#]|$)~', $url, $m)) {
             return 'https://player.vimeo.com/video/' . $m[1];
+        }
+
+        if (preg_match('~^https://drive\.google\.com/file/d/([\w-]{10,})(?:[/?#]|$)~', $url, $m)
+            || preg_match('~^https://drive\.google\.com/open\?(?:[^#]*&)?id=([\w-]{10,})(?:[&#]|$)~', $url, $m)) {
+            return 'https://drive.google.com/file/d/' . $m[1] . '/preview';
         }
 
         return null;

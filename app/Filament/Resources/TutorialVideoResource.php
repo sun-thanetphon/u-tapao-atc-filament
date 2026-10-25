@@ -53,7 +53,7 @@ class TutorialVideoResource extends Resource
                             ->label('แหล่งวิดีโอ')
                             ->options([
                                 'upload' => 'อัปโหลดไฟล์ (mp4 / webm)',
-                                'embed' => 'ฝังลิงก์ YouTube / Vimeo',
+                                'embed' => 'ฝังลิงก์ YouTube / Vimeo / Google Drive',
                             ])
                             ->default('upload')
                             ->required()
@@ -69,13 +69,13 @@ class TutorialVideoResource extends Resource
                             ->required(fn (Forms\Get $get) => $get('source') === 'upload'),
                         Forms\Components\TextInput::make('embed_url')
                             ->label('ลิงก์วิดีโอ')
-                            ->helperText('เช่น https://youtu.be/xxxxxxxxxxx หรือ https://vimeo.com/123456789')
+                            ->helperText('เช่น https://youtu.be/xxxxxxxxxxx, https://vimeo.com/123456789 หรือลิงก์แชร์ไฟล์ Google Drive (ต้องตั้งให้ "ทุกคนที่มีลิงก์" ดูได้)')
                             ->url()
                             ->visible(fn (Forms\Get $get) => $get('source') === 'embed')
                             ->required(fn (Forms\Get $get) => $get('source') === 'embed')
                             ->rule(fn () => function (string $attribute, $value, \Closure $fail) {
                                 if ((new TutorialVideo(['embed_url' => $value]))->embedSrc() === null) {
-                                    $fail('รองรับเฉพาะลิงก์ YouTube และ Vimeo');
+                                    $fail('รองรับเฉพาะลิงก์ YouTube, Vimeo และ Google Drive');
                                 }
                             }),
                         Forms\Components\TextInput::make('seq')

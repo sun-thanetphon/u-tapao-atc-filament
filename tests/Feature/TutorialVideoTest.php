@@ -108,6 +108,9 @@ class TutorialVideoTest extends TestCase
         $this->assertSame('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ', $embed('https://youtu.be/dQw4w9WgXcQ'));
         $this->assertSame('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ', $embed('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=5'));
         $this->assertSame('https://player.vimeo.com/video/123456789', $embed('https://vimeo.com/123456789'));
+        $this->assertSame('https://drive.google.com/file/d/1AbC_dEf-GhIjKlMnOp/preview', $embed('https://drive.google.com/file/d/1AbC_dEf-GhIjKlMnOp/view?usp=sharing'));
+        $this->assertSame('https://drive.google.com/file/d/1AbC_dEf-GhIjKlMnOp/preview', $embed('https://drive.google.com/open?id=1AbC_dEf-GhIjKlMnOp'));
+        $this->assertNull($embed('https://drive.google.com.evil.example/file/d/1AbC_dEf-GhIjKlMnOp/view'));
         $this->assertNull($embed('https://evil.example.com/watch?v=abc'));
         $this->assertNull($embed('javascript:alert(1)'));
     }
