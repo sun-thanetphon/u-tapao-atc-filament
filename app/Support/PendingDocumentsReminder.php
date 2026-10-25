@@ -106,6 +106,36 @@ class PendingDocumentsReminder
         ));
     }
 
+    /**
+     * รายชื่อผู้รับตามแผน สำหรับแสดงให้ super-admin ดูก่อนกดส่ง (ไม่รวมอีเมล)
+     *
+     * @return array<int, array{name: string, section: string, documents: int, message: int}> message = ฉบับที่ผู้รับคนนั้นจะได้ (นับจาก 1)
+     */
+    public function recipientList(array $plan): array
+    {
+        $list = [];
+        $message = 0;
+
+        foreach ($plan['groups'] as $group) {
+            $chunks = array_chunk(array_keys($group['users']), DocumentNotifier::MAX_RECIPIENTS_PER_MESSAGE - 1);
+
+            foreach ($chunks as $ids) {
+                $message++;
+
+                foreach (User::query()->with('section')->whereIn('id', $ids)->get() as $user) {
+                    $list[] = [
+                        'name' => $user->getFullName(),
+                        'section' => (string) $user->section?->prefix,
+                        'documents' => count($group['documents']),
+                        'message' => $message,
+                    ];
+                }
+            }
+        }
+
+        return $list;
+    }
+
     public function userCount(array $plan): int
     {
         return array_sum(array_map(fn (array $group) => count($group['users']), $plan['groups']));

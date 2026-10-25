@@ -153,4 +153,27 @@ class PendingDocumentsReminderTest extends TestCase
 
         Livewire::test(ListDocuments::class)->assertActionHidden('remindAllPending');
     }
+
+    public function test_recipient_list_names_each_person_without_emails(): void
+    {
+        $a = $this->member('ADC');
+        $this->member('APP');
+
+        $reminder = app(PendingDocumentsReminder::class);
+        $list = $reminder->recipientList($reminder->plan());
+
+        $this->assertCount(2, $list);
+        $this->assertContains($a->getFullName(), array_column($list, 'name'));
+        $this->assertStringNotContainsString('@', json_encode($list));
+    }
+
+    public function test_confirmation_modal_lists_recipients(): void
+    {
+        $a = $this->member('ADC');
+        $this->actingAs($this->makeUser($this->section('APP'), RoleEnum::SUPERADMIN));
+
+        Livewire::test(ListDocuments::class)
+            ->mountAction('remindAllPending')
+            ->assertSee($a->getFullName());
+    }
 }

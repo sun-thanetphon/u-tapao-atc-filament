@@ -10,6 +10,7 @@ use App\Support\DocumentNotifier;
 use App\Support\PendingDocumentsReminder;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\HtmlString;
 
 class ListDocuments extends ListRecords
 {
@@ -31,9 +32,15 @@ class ListDocuments extends ListRecords
                     $reminder = app(PendingDocumentsReminder::class);
                     $plan = $reminder->plan();
 
-                    return 'จะส่งอีเมลเตือนผู้ใช้ ' . $reminder->userCount($plan) . ' คน แบ่งเป็น ' . count($plan['groups']) . ' กลุ่ม รวม '
-                        . $reminder->messageCount($plan) . " ฉบับ (แต่ละคนได้เมลเดียวที่ระบุเอกสารที่ค้างทั้งหมด; {$plan['without_email']} คนไม่มีอีเมล, {$plan['cooling']} คนเพิ่งถูกเตือนใน "
+                    $summary = 'จะส่งอีเมลเตือนผู้ใช้ ' . $reminder->userCount($plan) . ' คน แบ่งเป็น ' . count($plan['groups']) . ' กลุ่ม รวม '
+                        . $reminder->messageCount($plan) . " ฉบับ ({$plan['without_email']} คนไม่มีอีเมล, {$plan['cooling']} คนเพิ่งถูกเตือนใน "
                         . PendingDocumentsReminder::COOLDOWN_HOURS . ' ชม.)';
+
+                    $rows = collect($reminder->recipientList($plan))
+                        ->map(fn (array $row) => '<li>' . e("{$row['name']} ({$row['section']}) ค้าง {$row['documents']} เอกสาร, ฉบับที่ {$row['message']}") . '</li>')
+                        ->implode('');
+
+                    return new HtmlString(e($summary) . ($rows !== '' ? '<ul style="margin-top:.75rem;text-align:left;list-style:disc;padding-left:1.25rem">' . $rows . '</ul>' : ''));
                 })
                 ->action(function () {
                     abort_unless(auth()->user()->hasRole(RoleEnum::SUPERADMIN), 403);
