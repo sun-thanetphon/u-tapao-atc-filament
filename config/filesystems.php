@@ -15,6 +15,9 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
+    // disk ปลายทางสำหรับคัดลอกชุดสำรอง (ว่าง = เก็บใน storage/app/backups อย่างเดียว)
+    'backup_disk' => env('BACKUP_DISK'),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
