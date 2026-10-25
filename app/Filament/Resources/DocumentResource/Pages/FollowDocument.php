@@ -10,6 +10,7 @@ use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use App\Filament\Widgets\StatsFollowOverview;
 use App\Models\DocumentAcknowledge;
 use App\Models\User;
+use App\Support\DocumentNotifier;
 use Carbon\Carbon;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\IconColumn;
@@ -65,6 +66,23 @@ class FollowDocument extends Page implements HasTable
                 return User::query()->active()->whereIn('section_id', $this->record->acknowledge_sections);
             })
             ->headerActions([
+                Action::make('remind')
+                    ->label('ส่งเมลเตือนคนที่ยังไม่รับทราบ')
+                    ->icon('heroicon-o-envelope')
+                    ->color('warning')
+                    ->visible(fn () => auth()->user()->hasRole(RoleEnum::SUPERADMIN))
+                    ->requiresConfirmation()
+                    ->modalHeading('ส่งอีเมลเตือน')
+                    ->modalDescription(function () {
+                        [$emails, $withoutEmail] = app(DocumentNotifier::class)->recipients($this->record);
+
+                        return 'จะส่งอีเมลเตือนถึงผู้ที่ยังไม่ได้รับทราบเอกสารนี้ ' . count($emails) . " คน ({$withoutEmail} คนไม่มีอีเมล) ส่งซ้ำได้ทุก " . DocumentNotifier::REMINDER_COOLDOWN_HOURS . ' ชั่วโมง';
+                    })
+                    ->action(function () {
+                        abort_unless(auth()->user()->hasRole(RoleEnum::SUPERADMIN), 403);
+
+                        app(DocumentNotifier::class)->remind($this->record);
+                    }),
                 Action::make('export')
                     ->action(function () {
                         return  Excel::download(new FollowExport($this->record), 'follow_' . $this->record->code . now()->format('dmyHi') . ' .xlsx');
