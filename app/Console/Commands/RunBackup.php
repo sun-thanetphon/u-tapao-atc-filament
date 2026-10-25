@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Support\BackupService;
+use App\Support\GoogleDriveBackup;
 use Illuminate\Console\Command;
 
 /**
@@ -10,7 +11,8 @@ use Illuminate\Console\Command;
  * ตั้ง cron บนโฮสต์ เช่น ฐานข้อมูลทุกคืน และรวมไฟล์สัปดาห์ละครั้ง:
  *   0 2 * * *  cd ~/domains/u-tapaoatc.com && php artisan backup:run --db-only
  *   30 2 * * 0 cd ~/domains/u-tapaoatc.com && php artisan backup:run
- * ตั้ง BACKUP_DISK เพื่อคัดลอกไปเก็บนอกเครื่อง host ด้วย (โฟลเดอร์บน host เดียวกันไม่ช่วยถ้า host เสีย)
+ * ตั้ง GOOGLE_DRIVE_* (ดู backup:drive-auth) เพื่ออัปโหลดไป Google Drive ด้วย หรือ BACKUP_DISK สำหรับ disk อื่น
+ * (โฟลเดอร์บน host เดียวกันไม่ช่วยถ้า host เสีย)
  */
 class RunBackup extends Command
 {
@@ -26,7 +28,9 @@ class RunBackup extends Command
     {
         $keep = ['db' => (int) $this->option('keep'), 'files' => (int) $this->option('keep-files')];
         $disk = config('filesystems.backup_disk');
+        $drive = GoogleDriveBackup::configured() ? new GoogleDriveBackup() : null;
         $made = [];
+        $exitCode = self::SUCCESS;
 
         try {
             $made['db'] = $backup->dumpDatabase();
@@ -44,6 +48,18 @@ class RunBackup extends Command
                 }
 
                 $backup->prune($kind, $keep[$kind]);
+
+                // อัปโหลดล้มเหลวไม่ทำให้ชุดสำรองในเครื่องเสีย แต่ต้องรู้ จึงคืน FAILURE ให้ cron เห็น
+                if ($drive) {
+                    try {
+                        $drive->upload($path);
+                        $drive->prune($kind, $keep[$kind]);
+                        $this->info('  อัปโหลดไป Google Drive แล้ว');
+                    } catch (\Throwable $e) {
+                        $this->error('  อัปโหลดไป Google Drive ไม่สำเร็จ: ' . $e->getMessage());
+                        $exitCode = self::FAILURE;
+                    }
+                }
             }
         } catch (\Throwable $e) {
             $this->error('สำรองไม่สำเร็จ: ' . $e->getMessage());
@@ -51,6 +67,6 @@ class RunBackup extends Command
             return self::FAILURE;
         }
 
-        return self::SUCCESS;
+        return $exitCode;
     }
 }
