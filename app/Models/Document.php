@@ -31,6 +31,11 @@ class Document extends Model
      */
     public bool $keepRevision = false;
 
+    /**
+     * หมายเหตุว่าไฟล์ใหม่เปลี่ยนอะไร บันทึกลงประวัติฉบับตอนเปลี่ยนไฟล์ (ไม่ใช่คอลัมน์ในฐานข้อมูล)
+     */
+    public ?string $revisionNote = null;
+
     protected $casts = [
         'view_sections' => 'array',
         'acknowledge_sections' => 'array',
@@ -63,6 +68,14 @@ class Document extends Model
     public function acknowledges(): HasMany
     {
         return $this->hasMany(DocumentAcknowledge::class, 'document_id');
+    }
+
+    /**
+     * ไฟล์ทุกฉบับที่เคยอัปโหลด เรียงจากเก่าไปใหม่
+     */
+    public function files(): HasMany
+    {
+        return $this->hasMany(DocumentFile::class, 'document_id')->orderBy('id');
     }
 
     public function isAcknowledged($userId): bool //เช็คว่ารับทราบไฟล์รอบปัจจุบันหรือยัง?

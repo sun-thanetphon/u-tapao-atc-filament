@@ -39,6 +39,29 @@ Route::get('/storage/{folder}/{path}', function ($folder, $path) {
     return redirect()->intended('admin');
 })->name('view.pdf');
 
+// ไฟล์ฉบับเก่าในประวัติฉบับ เปิดได้เฉพาะผู้จัดการเอกสาร ผู้ใช้ทั่วไปเห็นแค่ฉบับปัจจุบันผ่าน view.pdf
+// {file} ต้องเป็นของ {document} (scopeBindings) ไม่งั้น 404
+Route::get('/documents/{document}/files/{file}', function (\App\Models\Document $document, \App\Models\DocumentFile $file) {
+    if (!Auth::check()) {
+        return redirect()->intended('admin');
+    }
+
+    if (!\App\Filament\Resources\DocumentResource::canAccess() || !Storage::disk('local')->exists($file->file_path)) {
+        abort(404);
+    }
+
+    $asciiName = preg_replace('/[^A-Za-z0-9._-]+/', '_', $document->code) . '_rev' . $file->revision . '.pdf';
+
+    return response()->file(Storage::disk('local')->path($file->file_path), [
+        'Content-Type' => Storage::disk('local')->mimeType($file->file_path),
+        'Content-Disposition' => HeaderUtils::makeDisposition(
+            HeaderUtils::DISPOSITION_INLINE,
+            $file->downloadName(),
+            $asciiName,
+        ),
+    ]);
+})->scopeBindings()->name('document.file');
+
 // หน้ารายงานผู้รับทราบเอกสารสำหรับพิมพ์/บันทึกเป็น PDF (เฉพาะ super-admin เหมือนหน้าติดตาม)
 Route::get('/documents/{document}/follow/print', function (\App\Models\Document $document) {
     abort_unless(Auth::check() && Auth::user()->hasRole(\App\Enums\RoleEnum::SUPERADMIN), 403);

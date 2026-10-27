@@ -13,6 +13,9 @@ class DocumentObserver
     /** ล็อกกันสร้างรหัสเอกสารซ้ำ ถือไว้ตั้งแต่ออกรหัสจนบันทึกเสร็จ (static เพราะ Laravel สร้าง observer ใหม่ทุก event) */
     private static ?Lock $codeLock = null;
 
+    /** @var array<int, array<string>> ไฟล์ของเอกสารที่กำลังลบถาวร ตาม id เอกสาร */
+    private static array $filesToDelete = [];
+
     public function creating(Document $document): void
     {
         $prefix = "D" . now()->format('y') . now()->format('m');
@@ -44,13 +47,18 @@ class DocumentObserver
     {
         self::$codeLock?->release();
         self::$codeLock = null;
+
+        $document->files()->create([
+            'revision' => $document->revision,
+            'file_path' => $document->file_path,
+            'uploaded_by' => $document->creator_id,
+        ]);
     }
 
     public function updating(Document $document): void
     {
+        // ไฟล์เดิมไม่ลบ: เก็บไว้ในประวัติฉบับ (document_files) เป็นหลักฐานว่ารอบก่อนรับทราบเนื้อหาอะไร
         if ($document->isDirty('file_path')) {
-            Storage::disk('local')->delete($document->getOriginal('file_path'));
-
             // ผู้แก้เลือกว่าไม่ต้องรับทราบใหม่ (เช่น แก้คำผิด): คงรอบเดิมและสถานะอีเมลเดิม
             if ($document->keepRevision) {
                 return;
@@ -67,7 +75,15 @@ class DocumentObserver
      */
     public function updated(Document $document): void
     {
-        //
+        if ($document->wasChanged('file_path')) {
+            $document->files()->create([
+                'revision' => $document->revision,
+                'file_path' => $document->file_path,
+                'minor' => $document->keepRevision,
+                'note' => $document->revisionNote,
+                'uploaded_by' => auth()->id(),
+            ]);
+        }
     }
 
     /**
@@ -87,10 +103,22 @@ class DocumentObserver
     }
 
     /**
+     * จำไฟล์ทุกฉบับไว้ก่อนลบถาวร เพราะแถวใน document_files ถูกลบตามเอกสารไปด้วย
+     */
+    public function forceDeleting(Document $document): void
+    {
+        self::$filesToDelete[$document->id] = $document->files()->pluck('file_path')
+            ->push($document->file_path)
+            ->unique()
+            ->all();
+    }
+
+    /**
      * ลบไฟล์เฉพาะตอนลบถาวร: soft delete ต้องกู้เอกสารคืนพร้อมไฟล์ได้
      */
     public function forceDeleted(Document $document): void
     {
-        Storage::disk('local')->delete($document->file_path);
+        Storage::disk('local')->delete(self::$filesToDelete[$document->id] ?? [$document->file_path]);
+        unset(self::$filesToDelete[$document->id]);
     }
 }

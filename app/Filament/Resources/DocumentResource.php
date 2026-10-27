@@ -108,6 +108,15 @@ class DocumentResource extends Resource
                     ->dehydrated(false)
                     // มีผลเฉพาะตอนแก้ไขเอกสารที่ต้องรับทราบ
                     ->visible(fn (?Document $record): bool => $record?->isNeedToAck() ?? false),
+                Forms\Components\TextInput::make('revision_note')
+                    ->label('ไฟล์ใหม่เปลี่ยนอะไร (ไม่บังคับ)')
+                    ->helperText('บันทึกไว้ในประวัติฉบับเมื่อเปลี่ยนไฟล์')
+                    ->maxLength(255)
+                    ->columnSpanFull()
+                    // ไม่ใช่คอลัมน์ในฐานข้อมูล: อ่านค่าจากฟอร์มก่อนบันทึกแทน
+                    ->dehydrated(false)
+                    // มีผลเฉพาะตอนแก้ไขเอกสาร
+                    ->visible(fn (?Document $record): bool => $record !== null),
                 Forms\Components\Section::make()
                     ->description('ต้องการประกาศให้เป็นสาธารณะหรือไม่?')
                     ->schema([
@@ -199,6 +208,21 @@ class DocumentResource extends Resource
                         ->icon('heroicon-o-eye')
                         ->label('อ่าน')
                         ->openUrlInNewTab(),
+                    Tables\Actions\Action::make('history')
+                        ->label('ประวัติฉบับ')
+                        ->icon('heroicon-o-clock')
+                        ->color('gray')
+                        ->modalHeading(fn (Document $record): string => 'ประวัติฉบับ: ' . $record->name)
+                        ->modalContent(fn (Document $record) => view('filament.resources.document-resource.file-history', [
+                            'document' => $record,
+                            'revisions' => $record->files()->with('uploader.rank')->get()->groupBy('revision')->sortKeysDesc(),
+                            'acknowledged' => $record->acknowledges()
+                                ->selectRaw('revision, count(*) as total')
+                                ->groupBy('revision')
+                                ->pluck('total', 'revision'),
+                        ]))
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('ปิด'),
                     Tables\Actions\Action::make('follow')
                         ->icon('heroicon-o-arrow-trending-up')
                         ->hidden(function ($record) {
@@ -210,6 +234,7 @@ class DocumentResource extends Resource
                         ->before(function (Document $record, $livewire): void {
                             $raw = $livewire->getMountedTableActionForm()?->getRawState() ?? [];
                             $record->keepRevision = ! ($raw['require_reacknowledge'] ?? true);
+                            $record->revisionNote = trim((string) ($raw['revision_note'] ?? '')) ?: null;
                         })
                         ->after(function (Document $record, $livewire): void {
                             app(DocumentNotifier::class)->notify($record, DocumentNotifier::wantedIn($livewire->getMountedTableActionForm()));

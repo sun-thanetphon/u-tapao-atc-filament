@@ -99,7 +99,8 @@ class DocumentIntegrityTest extends TestCase
         $document->refresh();
         $this->assertSame(2, $document->revision);
         $this->assertNull($document->notified_at, 'ไฟล์ใหม่ต้องส่งอีเมลแจ้งได้อีกครั้ง');
-        Storage::disk('local')->assertMissing('documents/a.pdf');
+        // ไฟล์รอบก่อนเก็บไว้ในประวัติฉบับ เป็นหลักฐานว่ารอบนั้นรับทราบเนื้อหาอะไร
+        Storage::disk('local')->assertExists('documents/a.pdf');
 
         // รอบเก่ายังอยู่เป็นหลักฐาน แต่ผู้ใช้ต้องรับทราบรอบใหม่
         $this->assertSame(1, DocumentAcknowledge::where('document_id', $document->id)->count());
