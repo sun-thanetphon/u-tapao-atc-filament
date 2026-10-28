@@ -48,7 +48,7 @@ class ApprovalTest extends TestCase
 
     protected function notificationTitles()
     {
-        return collect(session('filament.notifications', []))->pluck('title');
+        return $this->sentNotifications()->pluck('title');
     }
 
     public function test_admin_and_super_admin_can_approve_with_chosen_role(): void
@@ -289,7 +289,7 @@ class ApprovalTest extends TestCase
 
         $tabs = (new ListUsers())->getTabs();
         $this->assertSame(['pending', 'active', 'rejected'], array_keys($tabs));
-        $this->assertSame(2, $tabs['pending']->getBadge());
+        $this->assertSame('2', $tabs['pending']->getBadge());
 
         Livewire::test(ListUsers::class)
             ->assertSet('activeTab', 'active')

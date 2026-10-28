@@ -8,17 +8,17 @@ use Illuminate\Support\Carbon;
 
 class AcknowledgeActivityChart extends ChartWidget
 {
-    protected static ?string $heading = 'การรับทราบรายวัน';
+    protected ?string $heading = 'การรับทราบรายวัน';
 
-    protected static ?string $description = '30 วันล่าสุด';
+    protected ?string $description = '30 วันล่าสุด';
 
     protected static bool $isLazy = false;
 
     protected static ?int $sort = 4;
 
-    protected static string $color = 'primary';
+    protected string $color = 'primary';
 
-    protected static ?string $maxHeight = '260px';
+    protected ?string $maxHeight = '260px';
 
     protected int | string | array $columnSpan = ['default' => 'full', 'lg' => 2];
 

@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Enums\RoleEnum;
 use App\Exports\FollowExport;
+use App\Filament\Resources\DocumentTaskResource;
+use App\Filament\Resources\DocumentTaskResource\Pages\ListDocumentTasks;
 use App\Filament\Widgets\MyDocumentsCard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -38,6 +40,23 @@ class MyDocumentsCardTest extends TestCase
             ->assertDontSee($done->code)
             ->assertDontSee($other->code)
             ->assertSee('ฉบับที่รอให้คุณรับทราบ');
+    }
+
+    public function test_pending_link_opens_the_pending_tab(): void
+    {
+        $member = $this->makeUser($this->section('ADC'));
+        $this->makeDocument([$this->section('ADC')], [$this->section('ADC')]);
+        $this->actingAs($member);
+
+        $url = DocumentTaskResource::getUrl('index') . '?tab=pending';
+
+        Livewire::test(MyDocumentsCard::class)->assertSeeHtml('href="' . e($url) . '"');
+
+        // เปิดลิงก์แล้วต้องอยู่แท็บ "ยังไม่รับทราบ" จริง
+        $this->get($url)->assertOk();
+        Livewire::withQueryParams(['tab' => 'pending'])
+            ->test(ListDocumentTasks::class)
+            ->assertSet('activeTab', 'pending');
     }
 
     public function test_card_says_all_done_when_nothing_is_pending(): void

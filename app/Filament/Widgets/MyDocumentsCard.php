@@ -16,7 +16,7 @@ class MyDocumentsCard extends Widget
 
     private const NEW_DAYS = 7;
 
-    protected static string $view = 'filament.widgets.my-documents-card';
+    protected string $view = 'filament.widgets.my-documents-card';
 
     protected static bool $isLazy = false;
 
@@ -32,7 +32,7 @@ class MyDocumentsCard extends Widget
     protected function getViewData(): array
     {
         $pending = DocumentTaskResource::pendingQuery(Document::query());
-        $pendingUrl = DocumentTaskResource::getUrl('index', ['activeTab' => 'pending']);
+        $pendingUrl = DocumentTaskResource::getUrl('index', ['tab' => 'pending']);
 
         return [
             'pendingCount' => (clone $pending)->count(),

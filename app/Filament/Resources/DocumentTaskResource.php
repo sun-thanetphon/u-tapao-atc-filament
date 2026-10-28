@@ -2,13 +2,18 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\Action;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
+use App\Filament\Resources\DocumentTaskResource\Pages\ListDocumentTasks;
 use App\Enums\PermissionEnum;
 use App\Filament\Resources\DocumentTaskResource\Pages;
 use App\Models\Document;
 use App\Models\DocumentAcknowledge;
 use App\Models\DocumentCategory;
 use App\Support\CategoryStyle;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
@@ -23,11 +28,11 @@ class DocumentTaskResource extends Resource
 {
     protected static ?string $model = Document::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-rectangle-stack';
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationGroup = 'Tasks & Acknowledgements';
+    protected static string | \UnitEnum | null $navigationGroup = 'Tasks & Acknowledgements';
 
     protected static ?string $label = 'Document Tasks';
 
@@ -56,9 +61,9 @@ class DocumentTaskResource extends Resource
         return 'เอกสารที่รอการรับทราบ';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form->schema([]);
+        return $schema->components([]);
     }
 
     /**
@@ -162,7 +167,7 @@ class DocumentTaskResource extends Resource
             ->columns([
                 Split::make([
                     Stack::make([
-                        Tables\Columns\TextColumn::make('name')
+                        TextColumn::make('name')
                             ->label('ชื่อเอกสาร')
                             ->weight(FontWeight::Medium)
                             ->wrap()
@@ -171,7 +176,7 @@ class DocumentTaskResource extends Resource
                             ->openUrlInNewTab()
                             // ค้นหาด้วยรหัสเอกสารได้ แม้ไม่ได้แสดงในรายการ
                             ->searchable(['name', 'code']),
-                        Tables\Columns\TextColumn::make('category_label')
+                        TextColumn::make('category_label')
                             ->label('ประเภท')
                             ->getStateUsing(fn (Document $record) => $record->category?->name ?? 'none')
                             ->formatStateUsing(fn (Document $record) => new HtmlString(
@@ -183,7 +188,7 @@ class DocumentTaskResource extends Resource
                             )),
                     ])->space(1),
 
-                    Tables\Columns\TextColumn::make('status')
+                    TextColumn::make('status')
                         ->label('สถานะ')
                         ->badge()
                         ->grow(false)
@@ -205,8 +210,8 @@ class DocumentTaskResource extends Resource
                         }),
                 ])->from('md'),
             ])
-            ->actions([
-                Tables\Actions\Action::make('viewPdf')
+            ->recordActions([
+                Action::make('viewPdf')
                     ->url(fn (Document $record) => static::pdfUrl($record))
                     ->openUrlInNewTab()
                     ->button()
@@ -215,7 +220,7 @@ class DocumentTaskResource extends Resource
                     ->icon('heroicon-m-document-text')
                     ->label('อ่านเอกสาร'),
 
-                Tables\Actions\Action::make('acknowledge')
+                Action::make('acknowledge')
                     ->visible(fn (Document $record) => static::statusFor($record) === 'pending')
                     ->requiresConfirmation()
                     ->modalIcon('heroicon-o-document-check')
@@ -274,9 +279,9 @@ class DocumentTaskResource extends Resource
     ];
 
     /**
-     * @return \Illuminate\Support\Collection<int, DocumentCategory>
+     * @return Collection<int, DocumentCategory>
      */
-    public static function sortedCategories(): \Illuminate\Support\Collection
+    public static function sortedCategories(): Collection
     {
         return DocumentCategory::query()->get(['id', 'name'])
             ->sortBy(fn (DocumentCategory $category) => sprintf('%03d|%s', static::categoryRank($category->name), mb_strtolower($category->name)))
@@ -359,7 +364,7 @@ class DocumentTaskResource extends Resource
      */
     private static function displayDate($date): string
     {
-        $date = \Illuminate\Support\Carbon::parse($date)->locale('th');
+        $date = Carbon::parse($date)->locale('th');
 
         return $date->translatedFormat('j M Y');
     }
@@ -372,7 +377,7 @@ class DocumentTaskResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListDocumentTasks::route('/'),
+            'index' => ListDocumentTasks::route('/'),
         ];
     }
 }

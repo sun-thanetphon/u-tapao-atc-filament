@@ -9,7 +9,7 @@ use Filament\Widgets\Widget;
 
 class AcknowledgeOverview extends Widget
 {
-    protected static string $view = 'filament.widgets.acknowledge-overview';
+    protected string $view = 'filament.widgets.acknowledge-overview';
 
     protected static bool $isLazy = false;
 

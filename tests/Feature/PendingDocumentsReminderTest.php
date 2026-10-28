@@ -174,6 +174,6 @@ class PendingDocumentsReminderTest extends TestCase
 
         Livewire::test(ListDocuments::class)
             ->mountAction('remindAllPending')
-            ->assertSee($a->getFullName());
+            ->assertMountedActionModalSee($a->getFullName());
     }
 }

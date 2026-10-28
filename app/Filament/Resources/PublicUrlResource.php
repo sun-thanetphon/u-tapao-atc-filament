@@ -2,12 +2,25 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\Select;
+use App\Enums\PublicUrlCategoryEnum;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
+use Filament\Forms\Components\Textarea;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\PublicUrlResource\Pages\ListPublicUrls;
 use App\Enums\PermissionEnum;
 use App\Filament\Resources\PublicUrlResource\Pages;
 use App\Filament\Resources\PublicUrlResource\RelationManagers;
 use App\Models\PublicUrl;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -18,43 +31,43 @@ class PublicUrlResource extends Resource
 {
     protected static ?string $model = PublicUrl::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-link';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-link';
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationGroup = 'Public Links';
+    protected static string | \UnitEnum | null $navigationGroup = 'Public Links';
 
     public static function canAccess(): bool
     {
         return auth()->user()->can(PermissionEnum::DOCUMENT_VIEW);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make()
+        return $schema
+            ->components([
+                Section::make()
                     ->schema([
-                        Forms\Components\Select::make('category')
+                        Select::make('category')
                             ->label('ประเภท')
                             ->required()
                             ->options(
-                                collect(\App\Enums\PublicUrlCategoryEnum::cases())
+                                collect(PublicUrlCategoryEnum::cases())
                                     ->mapWithKeys(fn($case) => [$case->value => $case->label()])
                                     ->toArray()
                             ),
-                        Forms\Components\TextInput::make('name')
+                        TextInput::make('name')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('url')
+                        TextInput::make('url')
                             ->required()
                             ->url(),
-                        Forms\Components\TextInput::make('seq')
+                        TextInput::make('seq')
                             ->label('ลำดับ')
                             ->numeric()
                             ->minValue(1)
                             ->default(1),
-                        Forms\Components\ToggleButtons::make('publish')
+                        ToggleButtons::make('publish')
                             ->label('การเผยแพร่')
                             ->boolean('เผยแพร่', 'ซ่อน')
                             ->icons([1 => 'heroicon-m-eye', 0 => 'heroicon-m-eye-slash'])
@@ -62,7 +75,7 @@ class PublicUrlResource extends Resource
                             ->required()
                             ->default(true)
                             ->columnSpanFull(),
-                        Forms\Components\Textarea::make('desc')
+                        Textarea::make('desc')
                             ->columnSpanFull(),
                     ])->columns(2)
             ]);
@@ -72,19 +85,19 @@ class PublicUrlResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('category')
+                TextColumn::make('category')
                     ->badge()
                     ->formatStateUsing(fn($state) => $state?->label()),
-                Tables\Columns\TextColumn::make('seq'),
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('seq'),
+                TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\IconColumn::make('publish')
+                IconColumn::make('publish')
                     ->boolean(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -99,13 +112,13 @@ class PublicUrlResource extends Resource
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -120,7 +133,7 @@ class PublicUrlResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListPublicUrls::route('/'),
+            'index' => ListPublicUrls::route('/'),
             // 'create' => Pages\CreatePublicUrl::route('/create'),
             // 'edit' => Pages\EditPublicUrl::route('/{record}/edit'),
         ];

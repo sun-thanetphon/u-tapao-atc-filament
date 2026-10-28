@@ -2,6 +2,12 @@
 
 namespace App\Providers\Filament\Auth;
 
+use Filament\Auth\Pages\Register;
+use Filament\Auth\Http\Responses\Contracts\RegistrationResponse;
+use Throwable;
+use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Schema;
 use App\Enums\PermissionEnum;
 use App\Enums\UserStatus;
 use App\Mail\NewRegistrationMail;
@@ -11,14 +17,10 @@ use App\Models\User;
 use App\Support\SafeMail;
 use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\Component;
-use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Http\Responses\Auth\Contracts\RegistrationResponse;
 use Filament\Notifications\Notification;
-use Filament\Pages\Auth\Register;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rule;
@@ -37,11 +39,6 @@ class CustomRegister extends Register
     public function getHeading(): string | Htmlable
     {
         return 'สมัครใช้งาน';
-    }
-
-    public function getSubheading(): string | Htmlable | null
-    {
-        return 'ผู้ดูแลระบบจะตรวจสอบและอนุมัติก่อนจึงจะเข้าใช้งานได้';
     }
 
     public function register(): ?RegistrationResponse
@@ -99,7 +96,7 @@ class CustomRegister extends Register
                 ->get()
                 ->filter(fn (User $approver) => $approver->can(PermissionEnum::USER_APPROVE))
                 ->each(fn (User $approver) => SafeMail::send($approver->email, new NewRegistrationMail($applicant)));
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             report($e);
         }
     }
@@ -117,39 +114,34 @@ class CustomRegister extends Register
         return null;
     }
 
-    protected function getForms(): array
+    public function form(Schema $schema): Schema
     {
-        return [
-            'form' => $this->form(
-                $this->makeForm()
-                    ->schema([
-                        Select::make('rank_id')
-                            ->label('ยศ')
-                            ->options(fn () => Rank::query()->pluck('name', 'id'))
-                            ->required()
-                            ->exists('ranks', 'id'),
-                        Select::make('section_id')
-                            ->label('แผนก')
-                            ->options(fn () => Section::query()->pluck('name', 'id'))
-                            ->required()
-                            ->exists('sections', 'id'),
-                        $this->getUsernameFormComponent(),
-                        TextInput::make('firstname')
-                            ->label('ชื่อ')
-                            ->required()
-                            ->maxLength(255),
-                        TextInput::make('lastname')
-                            ->label('นามสกุล')
-                            ->required()
-                            ->maxLength(255),
-                        $this->getEmailFormComponent(),
-                        $this->getPasswordFormComponent(),
-                        $this->getPasswordConfirmationFormComponent(),
-                        $this->getHoneypotComponent(),
-                    ])
-                    ->statePath('data'),
-            ),
-        ];
+        return $schema
+            ->components([
+                Select::make('rank_id')
+                    ->label('ยศ')
+                    ->options(fn () => Rank::query()->pluck('name', 'id'))
+                    ->required()
+                    ->exists('ranks', 'id'),
+                Select::make('section_id')
+                    ->label('แผนก')
+                    ->options(fn () => Section::query()->pluck('name', 'id'))
+                    ->required()
+                    ->exists('sections', 'id'),
+                $this->getUsernameFormComponent(),
+                TextInput::make('firstname')
+                    ->label('ชื่อ')
+                    ->required()
+                    ->maxLength(255),
+                TextInput::make('lastname')
+                    ->label('นามสกุล')
+                    ->required()
+                    ->maxLength(255),
+                $this->getEmailFormComponent(),
+                $this->getPasswordFormComponent(),
+                $this->getPasswordConfirmationFormComponent(),
+                $this->getHoneypotComponent(),
+            ]);
     }
 
     protected function getUsernameFormComponent(): Component

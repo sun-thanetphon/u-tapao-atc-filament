@@ -2,6 +2,26 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Set;
+use Illuminate\Validation\Rules\Unique;
+use Illuminate\Http\UploadedFile;
+use Throwable;
+use Illuminate\Contracts\View\View;
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TagsColumn;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\BulkAction;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\UserResource\Pages\ListUsers;
 use App\Enums\PermissionEnum;
 use App\Enums\RoleEnum;
 use App\Enums\UserStatus;
@@ -17,7 +37,6 @@ use App\Support\SafeMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -32,11 +51,11 @@ class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-group';
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationGroup = 'Accounts';
+    protected static string | \UnitEnum | null $navigationGroup = 'Accounts';
 
     public static function canAccess(): bool
     {
@@ -70,9 +89,9 @@ class UserResource extends Resource
         ];
     }
 
-    protected static function roleField(): Forms\Components\Select
+    protected static function roleField(): Select
     {
-        return Forms\Components\Select::make('role')
+        return Select::make('role')
             ->label('บทบาท')
             ->options(static::approvableRoles())
             ->default(RoleEnum::USER)
@@ -84,19 +103,19 @@ class UserResource extends Resource
     /**
      * ช่องอีเมล (ไม่บังคับ) ใช้ร่วมกับหน้าโปรไฟล์: ตัดช่องว่าง, ไม่ซ้ำกับผู้ใช้ที่ยังไม่ถูกลบ, ค่าว่างเก็บเป็น null
      */
-    public static function emailField(): Forms\Components\TextInput
+    public static function emailField(): TextInput
     {
-        return Forms\Components\TextInput::make('email')
+        return TextInput::make('email')
             ->label('อีเมล')
             ->email()
             ->maxLength(255)
             ->live(onBlur: true)
-            ->afterStateUpdated(fn($state, Forms\Set $set) => $set('email', is_string($state) ? trim($state) : $state))
+            ->afterStateUpdated(fn($state, Set $set) => $set('email', is_string($state) ? trim($state) : $state))
             ->unique(
                 table: 'users',
                 column: 'email',
                 ignoreRecord: true,
-                modifyRuleUsing: fn(\Illuminate\Validation\Rules\Unique $rule) => $rule->whereNull('deleted_at'),
+                modifyRuleUsing: fn(Unique $rule) => $rule->whereNull('deleted_at'),
             )
             ->dehydrateStateUsing(fn($state) => filled(trim((string) $state)) ? trim($state) : null)
             ->dehydrated();
@@ -111,7 +130,7 @@ class UserResource extends Resource
     {
         $file = is_array($file) ? (collect($file)->first()) : $file;
 
-        if ($file instanceof \Illuminate\Http\UploadedFile) {
+        if ($file instanceof UploadedFile) {
             return (new EmailImport)->readFile($file->getRealPath(), $file->getClientOriginalExtension());
         }
 
@@ -119,7 +138,7 @@ class UserResource extends Resource
             try {
                 $exists = Storage::disk('local')->exists($file);
                 $fullPath = $exists ? Storage::disk('local')->path($file) : null;
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $fullPath = null;
             }
 
@@ -144,7 +163,7 @@ class UserResource extends Resource
     /**
      * ตัวอย่างผลนำเข้าสำหรับขั้นตอนที่ 2 (ไม่เขียนฐานข้อมูล)
      */
-    public static function emailImportPreview(mixed $file, bool $overwrite): \Illuminate\Contracts\View\View
+    public static function emailImportPreview(mixed $file, bool $overwrite): View
     {
         $result = null;
         $error = null;
@@ -312,29 +331,29 @@ class UserResource extends Resource
         }
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make()
+        return $schema
+            ->components([
+                Section::make()
                     ->schema([
-                        Forms\Components\Select::make('rank_id')
+                        Select::make('rank_id')
                             ->relationship('rank', 'name')
                             ->required(),
-                        Forms\Components\Select::make('section_id')
+                        Select::make('section_id')
                             ->relationship('section', 'name')
                             ->required(),
-                        Forms\Components\TextInput::make('username')
+                        TextInput::make('username')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('firstname')
+                        TextInput::make('firstname')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('lastname')
+                        TextInput::make('lastname')
                             ->required()
                             ->maxLength(255),
                         static::emailField(),
-                        Forms\Components\TextInput::make('password')
+                        TextInput::make('password')
                             ->label(__('Password'))
                             ->password()
                             ->hint('อย่างน้อย 8 ตัวอักษร')
@@ -344,14 +363,14 @@ class UserResource extends Resource
                             ->required(fn(string $context): bool => $context === 'create'),
                     ])->columns(2),
 
-                Forms\Components\Section::make('Roles & Permissions')
+                Section::make('Roles & Permissions')
                     ->schema([
-                        Forms\Components\Select::make('roles')
+                        Select::make('roles')
                             ->preload()
                             ->required(fn(string $context): bool => $context === 'create')
                             ->native(false)
                             ->extraAttributes([
-                                'class' => 'capitalize'
+                                'class' => 'uta-capitalize'
                             ])
                             ->relationship(
                                 'roles',
@@ -377,18 +396,18 @@ class UserResource extends Resource
                 ->orderBy('users.created_at')
                 ->orderBy('users.id'))
             ->columns([
-                Tables\Columns\TextColumn::make('section.name')
+                TextColumn::make('section.name')
                     ->getStateUsing(function ($record) {
                         return  $record->section->name . " (" . $record->section->prefix . ")";
                     })
                     ->sortable(),
-                Tables\Columns\TextColumn::make('username')
+                TextColumn::make('username')
                     ->searchable(),
                 // อยู่ถัดจาก username เพื่อให้เห็นตำแหน่งโดยไม่ต้องเลื่อนตารางไปทางขวา
-                Tables\Columns\TagsColumn::make('roles.name')
+                TagsColumn::make('roles.name')
                     ->sortable()
                     ->extraAttributes([
-                        'class' => 'capitalize'
+                        'class' => 'uta-capitalize'
                     ])
                     ->label('Role')
                     ->color(fn($record) => match ($record->roles->first()?->name) {
@@ -397,27 +416,27 @@ class UserResource extends Resource
                         RoleEnum::USER => 'success',
                         default => 'secondary'
                     }),
-                Tables\Columns\TextColumn::make('rank.name')
+                TextColumn::make('rank.name')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('firstname')
+                TextColumn::make('firstname')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('lastname')
+                TextColumn::make('lastname')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('email')
+                TextColumn::make('email')
                     ->label('อีเมล')
                     ->searchable()
                     ->placeholder('-'),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->label('วันที่สมัคร')
                     ->toggleable(),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('deleted_at')
+                TextColumn::make('deleted_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -425,28 +444,28 @@ class UserResource extends Resource
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\Action::make('approve')
+            ->recordActions([
+                Action::make('approve')
                     ->label('อนุมัติ')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn(User $record) => $record->status === UserStatus::PENDING && static::canApprove())
                     ->modalHeading('อนุมัติบัญชีผู้ใช้')
-                    ->form([static::roleField()])
+                    ->schema([static::roleField()])
                     ->action(fn(User $record, array $data) => static::approveRecords(collect([$record]), $data['role'])),
-                Tables\Actions\Action::make('reject')
+                Action::make('reject')
                     ->label('ไม่อนุมัติ')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->visible(fn(User $record) => $record->status === UserStatus::PENDING && static::canApprove())
                     ->modalHeading('ไม่อนุมัติบัญชีผู้ใช้')
-                    ->form([
-                        Forms\Components\Textarea::make('reason')
+                    ->schema([
+                        Textarea::make('reason')
                             ->label('เหตุผล (ถ้ามี)')
                             ->maxLength(500),
                     ])
                     ->action(fn(User $record, array $data) => static::rejectRecord($record, $data['reason'] ?? null)),
-                Tables\Actions\Action::make('reopen')
+                Action::make('reopen')
                     ->label('เปิดพิจารณาใหม่')
                     ->icon('heroicon-o-arrow-path')
                     ->requiresConfirmation()
@@ -463,26 +482,26 @@ class UserResource extends Resource
                             ? Notification::make()->title('ย้ายกลับไปรออนุมัติแล้ว')->success()->send()
                             : Notification::make()->title('รายการนี้ถูกดำเนินการไปแล้ว')->warning()->send();
                     }),
-                Tables\Actions\ViewAction::make()
+                ViewAction::make()
                     ->hidden(function ($record) {
                         if (!auth()->user()->hasRole(RoleEnum::SUPERADMIN)) {
                             return $record->id == 1 ? true : false;
                         }
                     }),
-                Tables\Actions\EditAction::make()
+                EditAction::make()
                     ->hidden(function ($record) {
                         if (!auth()->user()->hasRole(RoleEnum::SUPERADMIN)) {
                             return $record->id == 1 ? true : false;
                         }
                     }),
-                Tables\Actions\DeleteAction::make()
+                DeleteAction::make()
                     ->hidden(function ($record) {
                         return $record->id == auth()->user()->id || $record->id == 1;
                     }),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\BulkAction::make('approveSelected')
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    BulkAction::make('approveSelected')
                         ->label('อนุมัติที่เลือก')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
@@ -491,7 +510,7 @@ class UserResource extends Resource
                         ->form([static::roleField()])
                         ->action(fn(Collection $records, array $data) => static::approveRecords($records, $data['role']))
                         ->deselectRecordsAfterCompletion(),
-                    Tables\Actions\DeleteBulkAction::make(),
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -506,7 +525,7 @@ class UserResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListUsers::route('/'),
+            'index' => ListUsers::route('/'),
         ];
     }
 }

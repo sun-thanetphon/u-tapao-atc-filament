@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use Filament\Panel;
 use App\Enums\RoleEnum;
 use App\Models\TutorialVideo;
 use Filament\Pages\Page;
@@ -14,11 +15,11 @@ class WatchTutorialVideo extends Page
 {
     protected static bool $shouldRegisterNavigation = false;
 
-    protected static string $view = 'filament.pages.watch-tutorial-video';
+    protected string $view = 'filament.pages.watch-tutorial-video';
 
     public TutorialVideo $video;
 
-    public static function getSlug(): string
+    public static function getSlug(?Panel $panel = null): string
     {
         return 'learning-video/{video}';
     }

@@ -52,7 +52,7 @@ class PasswordResetEmailTest extends TestCase
 
     protected function titles(): array
     {
-        return collect(session('filament.notifications', []))->pluck('title')->all();
+        return $this->sentNotifications()->pluck('title')->all();
     }
 
     protected function requestReset(string $email)
@@ -109,7 +109,7 @@ class PasswordResetEmailTest extends TestCase
         $this->userWithEmail(UserStatus::ACTIVE, 'deleted@example.com')->delete();
 
         foreach (['pending@example.com', 'rejected@example.com', 'deleted@example.com'] as $email) {
-            session()->forget('filament.notifications');
+            $this->forgetNotifications();
             $this->requestReset($email)->assertHasNoFormErrors();
             $this->assertSame([self::NEUTRAL], $this->titles(), $email);
             $this->deliverDeferred();
@@ -158,7 +158,7 @@ class PasswordResetEmailTest extends TestCase
         $this->doReset('person@example.com', $token)->assertHasNoFormErrors();
         $this->assertTrue(Hash::check('brand-new-pass', $user->fresh()->password));
 
-        session()->forget('filament.notifications');
+        $this->forgetNotifications();
         RateLimiter::clear('livewire-rate-limiter:' . sha1(CustomResetPassword::class . '|resetPassword|127.0.0.1'));
         $this->doReset('person@example.com', $token, 'another-pass-99');
 
@@ -240,7 +240,7 @@ class PasswordResetEmailTest extends TestCase
         // หน้าต่างเป็นรายชั่วโมง ไม่ใช่รายนาที
         $this->assertGreaterThan(60, RateLimiter::availableIn($this->requestLimiterKey()));
 
-        session()->forget('filament.notifications');
+        $this->forgetNotifications();
         $this->requestReset('second@example.com');
 
         $this->assertNotContains(self::NEUTRAL, $this->titles());

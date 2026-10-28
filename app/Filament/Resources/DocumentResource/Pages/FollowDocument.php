@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DocumentResource\Pages;
 
+use Filament\Actions\Action;
 use App\Enums\RoleEnum;
 use App\Exports\FollowExport;
 use App\Filament\Resources\DocumentResource;
@@ -12,7 +13,6 @@ use App\Models\DocumentAcknowledge;
 use App\Models\User;
 use App\Support\DocumentNotifier;
 use Carbon\Carbon;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -28,7 +28,7 @@ class FollowDocument extends Page implements HasTable
 
     protected static string $resource = DocumentResource::class;
 
-    protected static string $view = 'filament.resources.document-resource.pages.follow-document';
+    protected string $view = 'filament.resources.document-resource.pages.follow-document';
 
     protected ?string $subheading = 'รายการติดตามการรับทราบเอกสาร';
 
@@ -124,7 +124,7 @@ class FollowDocument extends Page implements HasTable
             ->filters([
                 //
             ])
-            ->actions([
+            ->recordActions([
                 Action::make('supervisorAck')
                     ->requiresConfirmation()
                     ->hidden(function ($record) {
@@ -144,7 +144,7 @@ class FollowDocument extends Page implements HasTable
                     ->button()
                     ->label('Force'),
             ])
-            ->bulkActions([
+            ->toolbarActions([
                 //
             ]);
     }

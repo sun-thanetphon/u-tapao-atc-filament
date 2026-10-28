@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use Illuminate\Support\Collection;
 use App\Enums\RoleEnum;
 use App\Models\TutorialVideo;
 use Filament\Pages\Page;
@@ -11,9 +12,9 @@ use Filament\Pages\Page;
  */
 class TutorialVideos extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-play-circle';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-play-circle';
 
-    protected static ?string $navigationGroup = 'Tasks & Acknowledgements';
+    protected static string | \UnitEnum | null $navigationGroup = 'Tasks & Acknowledgements';
 
     protected static ?string $navigationLabel = 'Learning Video';
 
@@ -23,10 +24,10 @@ class TutorialVideos extends Page
 
     protected static ?string $slug = 'learning-video';
 
-    protected static string $view = 'filament.pages.tutorial-videos';
+    protected string $view = 'filament.pages.tutorial-videos';
 
     /**
-     * @return array{videos: \Illuminate\Support\Collection<int, TutorialVideo>}
+     * @return array{videos: Collection<int, TutorialVideo>}
      */
     protected function getViewData(): array
     {

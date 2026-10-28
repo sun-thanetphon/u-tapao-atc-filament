@@ -12,7 +12,7 @@ use Filament\Widgets\Widget;
  */
 class ExamStudySetCard extends Widget
 {
-    protected static string $view = 'filament.widgets.exam-study-set-card';
+    protected string $view = 'filament.widgets.exam-study-set-card';
 
     protected static bool $isLazy = false;
 
