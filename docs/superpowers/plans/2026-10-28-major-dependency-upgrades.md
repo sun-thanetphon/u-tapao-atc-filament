@@ -80,7 +80,7 @@
 
 | # | PR | ขนาด | ความเสี่ยง | ทำได้เมื่อ |
 | --- | --- | --- | --- | --- |
-| 1 | เก็บกวาด: เอา laravel-trend และ filament-backgrounds ออก | S (≤ ครึ่งวัน) | ต่ำ | ทันที |
+| 1 | เก็บกวาด: เอา laravel-trend และ filament-backgrounds ออก (ภาพหน้า login ยังอยู่) | S (≤ ครึ่งวัน) | ต่ำ | ทันที |
 | 2 | Laravel 13 + tinker 3 + PHPUnit 12 | S–M (1–2 วัน) | ต่ำ–กลาง | หลัง 1 deploy |
 | 3 | spatie/laravel-permission 8 | S (≤ ครึ่งวัน) | ต่ำ | หลัง 2 (หรือก่อนก็ได้) |
 | 4 | maatwebsite/excel 4 + PhpSpreadsheet 5 | S (1 วัน) | กลาง | หลัง 2 (หรือก่อนก็ได้) |
@@ -117,23 +117,25 @@ Task 3 และ 4 ไม่ขึ้นกับ Filament จะทำสลั
 
 ---
 
-### Task 1: เอาแพ็กเกจที่ไม่ได้ใช้และที่บล็อก Laravel 13 ออก
+### Task 1: เอาแพ็กเกจที่ไม่ได้ใช้และที่บล็อก Laravel 13 ออก โดยหน้า login ยังมีภาพเดิม
 
-**ทำไม:** `flowframe/laravel-trend` ไม่มีโค้ดไหนเรียกเลย (`grep -rn "Flowframe\|Trend::" app resources tests` ไม่เจอ, `app/Filament/Widgets/AcknowledgeActivityChart.php` นับข้อมูลเอง) ส่วน `swisnl/filament-backgrounds` ใส่ภาพพื้นหลังผ่าน CSS ของ `.fi-simple-layout` แต่หน้า auth ทั้ง 4 หน้าใช้ layout ของเราเอง (`protected static string $layout = 'filament.layouts.login'` ใน `app/Providers/Filament/Auth/*.php` ซึ่ง render `<x-filament-panels::layout.base>`) จึงไม่มีหน้าไหนแสดงภาพจาก plugin นี้ และ 1.x คือตัวที่บล็อก Laravel 13
+**ทำไม:** `flowframe/laravel-trend` ไม่มีโค้ดไหนเรียกเลย (`grep -rn "Flowframe\|Trend::" app resources tests` ไม่เจอ, `app/Filament/Widgets/AcknowledgeActivityChart.php` นับข้อมูลเอง) ส่วน `swisnl/filament-backgrounds` 1.x คือตัวที่บล็อก Laravel 13 แต่ยังมีหน้าที่อยู่หนึ่งอย่าง: หน้า auth ทั้ง 4 หน้าใช้ layout ของเราเอง (`filament.layouts.login`) จึงไม่โดน CSS `.fi-simple-layout` ของ plugin แต่ plugin ส่งตัวแปร `--filament-backgrounds-image` (ภาพสุ่มจาก `images/backgrounds/` ผ่าน `PublicHtmlImages` ซึ่งตอนนี้มีภาพเดียวคือ `bg2.jpg`) และ theme เอาไปเป็นภาพแผงซ้ายของหน้า login ที่ `resources/css/filament-theme.css:234-237` (`.uta-login-brand`) ถ้าถอด plugin เฉย ๆ ภาพรันเวย์บนหน้า login จะหาย ผู้ใช้ตัดสินใจ (2026-10-28) ให้คงภาพเดิมไว้ หน้า Home ก็ใช้ภาพเดียวกันโดยตรง (`resources/views/filament/pages/home.blade.php:8`, `--uta-hero-photo`) ห้ามลบ `public/images/backgrounds/bg2.jpg`
 
 **Files:**
 - Modify: `composer.json`, `composer.lock`
-- Modify: `app/Providers/Filament/AdminPanelProvider.php:29-30,43-49` (เอา `->plugins([...])` และ `use` ออก)
+- Modify: `app/Providers/Filament/AdminPanelProvider.php:29-30,43-49` (เอา `->plugins([...])` และ `use` ออก แล้วเพิ่มตัวแปร CSS ใน HEAD_END hook เดิม)
+- Modify: `resources/css/filament-theme.css:237` (`var(--filament-backgrounds-image, none)` → `var(--uta-login-photo, none)`)
 - Delete: `app/Filament/Custom/PublicHtmlImages.php`
-- ไม่ลบ `public/images/backgrounds/` ใน task นี้ (ดูคำถามข้อ 2)
+- Test: `tests/Feature/PagesTest.php`
 
-- [ ] **Step 1:** เปิดหน้า `/admin/login`, `/admin/register`, `/admin/password-reset/request` ใน stack ของ worktree แล้วจับภาพหน้าจอเก็บไว้เทียบ (light และ dark)
-- [ ] **Step 2:** `composer remove flowframe/laravel-trend swisnl/filament-backgrounds` ใน container แล้วแก้ `AdminPanelProvider` และลบ `PublicHtmlImages`
-- [ ] **Step 3:** รันเทสต์ทั้งชุด คาดว่าผ่าน 331 ตัว
-- [ ] **Step 4:** จับภาพทั้ง 3 หน้าอีกรอบ ต้องเหมือน Step 1 ทุกจุด ถ้าเห็นความต่าง ให้หยุดแล้วถามผู้ใช้ (อาจมีหน้าที่ใช้ simple layout ที่ผมหาไม่เจอ)
-- [ ] **Step 5:** commit `chore(deps): drop unused laravel-trend and filament-backgrounds`
+- [ ] **Step 1:** เปิดหน้า `/admin/login`, `/admin/register`, `/admin/password-reset/request` ใน stack ของ worktree แล้วจับภาพหน้าจอเก็บไว้เทียบ (light, dark และกว้าง 375) ตอนนี้แผงซ้ายต้องเห็นภาพรันเวย์
+- [ ] **Step 2:** เขียนเทสต์ `PagesTest::test_login_page_shows_the_runway_photo`: guest เปิด `/admin/login` แล้ว `assertSee('--uta-login-photo', false)` และ `assertSee('images/backgrounds/bg2.jpg', false)` รันแล้วต้องพัง
+- [ ] **Step 3:** `composer remove flowframe/laravel-trend swisnl/filament-backgrounds` ใน container ลบ `PublicHtmlImages` และ `use` ที่เกี่ยวข้อง แล้วใน HEAD_END hook ของ `AdminPanelProvider` ให้ต่อ `:root{--uta-login-photo:url("…")}` ไว้หน้า CSS ของ theme โดยใช้ `asset('images/backgrounds/bg2.jpg')` (สลับ `public`/`public_html` ให้เองแบบเดียวกับหน้า Home) และแก้ `filament-theme.css:237` ให้ใช้ `--uta-login-photo` เลือกภาพตายตัวแทนการสุ่ม เพราะในโฟลเดอร์มีภาพเดียว
+- [ ] **Step 4:** รันเทสต์ทั้งชุด คาดว่าผ่านหมดรวมตัวใหม่
+- [ ] **Step 5:** จับภาพทั้ง 3 หน้าอีกรอบ ต้องเหมือน Step 1 ทุกจุด รวมถึงภาพรันเวย์และ gradient ทับภาพ ถ้าต่าง ให้หยุดแล้วถามผู้ใช้
+- [ ] **Step 6:** commit `chore(deps): drop laravel-trend and filament-backgrounds, keep the login photo`
 
-**เช็กในเบราว์เซอร์:** หน้า login, register, ขอรีเซ็ตรหัสผ่าน และหน้าตั้งรหัสใหม่จากลิงก์ในเมล
+**เช็กในเบราว์เซอร์:** หน้า login (ภาพรันเวย์ที่แผงซ้าย ทั้งจอกว้างและมือถือ), register, ขอรีเซ็ตรหัสผ่าน, หน้าตั้งรหัสใหม่จากลิงก์ในเมล และหน้า Home (ภาพ hero เดิม) บนโฮสต์จริงหลัง deploy ให้เช็กว่าภาพโหลดผ่าน https จาก `public_html`
 **Rollback:** มาตรฐาน
 
 ### Task 2: Laravel 13 + tinker 3 + PHPUnit 12
@@ -333,7 +335,7 @@ Tinker 3: เลิกรองรับ PHP 8.0 และต่ำกว่า 
 ## คำถามที่ผู้ใช้ต้องตัดสินใจ
 
 1. **deploy Filament 4 ขึ้น production ก่อนไหม** หรือทำ Task 5 กับ 6 ต่อกันแล้ว deploy ทีเดียว ผมแนะนำให้ deploy Filament 4 ก่อน แล้วใช้จริงอย่างน้อย 1 สัปดาห์ เพื่อแยกปัญหาของ Filament ออกจาก Livewire 4 และมีจุด rollback ที่ใช้งานได้จริง (แต่ Filament 4 หมด bug fix 15 ม.ค. 2027 จึงไม่ควรค้างนาน)
-2. **ภาพใน `public/images/backgrounds/` (`bg2.jpg`)** ใช้กับ filament-backgrounds เท่านั้น ซึ่งไม่ได้แสดงที่ไหนเลย จะลบทิ้ง หรืออยากให้หน้า login แสดงภาพนี้จริง (ถ้าอยาก ทำด้วย CSS ใน theme ได้ใน PR แยก)
+2. ~~ภาพพื้นหลังหน้า login~~ **ตอบแล้ว (2026-10-28):** คงภาพรันเวย์เดิม (`bg2.jpg`) ไว้ Task 1 ส่งภาพผ่านตัวแปร CSS ของเราเองแทน plugin
 3. **ช่วงเวลา deploy** ของแต่ละขั้น (แนะนำนอกเวลาเข้าเวร) และใครเป็นคนเช็กหลังล็อกอินด้วยบัญชีจริง
 4. **ตัวเลือกแสดง "ทั้งหมด" (all) ในตาราง** Filament 4 เอาออกจากค่าเริ่มต้น มีใครใช้อยู่ไหม ถ้าใช้ ผมจะใส่กลับให้ตารางที่ต้องการ
 5. **เปิด `session.serialization=json` และ `cache.serializable_classes` ตาม Laravel 13 ไหม** ช่วยลดความเสี่ยงถ้า `APP_KEY` หลุด แต่ทุกคนต้องล็อกอินใหม่หนึ่งครั้ง และต้องแก้ cache ของหน้า Credential Expiry ก่อน ผมแนะนำให้ทำเป็น PR แยกหลัง Task 2
