@@ -185,4 +185,15 @@ class TutorialVideoTest extends TestCase
 
         $this->get('/admin/manage-learning-video')->assertOk()->assertSee('คลิปที่ซ่อน');
     }
+
+    public function test_manage_page_title_has_no_english_plural_suffix(): void
+    {
+        $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::ADMIN));
+
+        $html = $this->get('/admin/manage-learning-video')->assertOk()->getContent();
+
+        preg_match('/<title>(.*?)<\/title>/su', $html, $title);
+        $this->assertSame('วิดีโอแนะนำ - U-Tapao ATC', trim(preg_replace('/\s+/u', ' ', $title[1] ?? '')));
+        $this->assertStringNotContainsString('วิดีโอแนะนำs', $html);
+    }
 }

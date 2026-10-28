@@ -45,6 +45,9 @@ class TutorialVideoResource extends Resource
 
     protected static ?string $modelLabel = 'วิดีโอแนะนำ';
 
+    // ภาษาไทยไม่มีรูปพหูพจน์ ถ้าไม่ตั้งไว้ Filament จะเติม "s" ให้เป็น "วิดีโอแนะนำs"
+    protected static ?string $pluralModelLabel = 'วิดีโอแนะนำ';
+
     protected static ?int $navigationSort = 4;
 
     public static function canAccess(): bool
