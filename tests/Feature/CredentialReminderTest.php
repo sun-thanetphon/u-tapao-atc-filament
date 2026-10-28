@@ -123,6 +123,8 @@ class CredentialReminderTest extends TestCase
         $this->assertSame(1, $failed['failed']);
         $this->assertSame(0, CredentialReminder::query()->count());
 
+        // เอา mock ออกจาก container ด้วย ไม่งั้น Mail::fake() จะห่อ mock ตัวเดิม (MailFake เรียก getDefaultDriver() ตอนสร้าง)
+        $this->app->forgetInstance('mail.manager');
         Mail::clearResolvedInstances();
         Mail::fake();
         $this->assertSame(1, $this->remind([$row])['sent']);
