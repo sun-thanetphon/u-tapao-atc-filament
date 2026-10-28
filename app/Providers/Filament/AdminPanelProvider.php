@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Custom\PublicHtmlImages;
 use App\Providers\Filament\Auth\CustomLogin;
 use App\Providers\Filament\Auth\CustomRegister;
 use App\Providers\Filament\Auth\CustomRequestPasswordReset;
@@ -26,8 +25,6 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Navigation\MenuItem;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Support\HtmlString;
-use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
-use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -40,13 +37,6 @@ class AdminPanelProvider extends PanelProvider
             ->login(CustomLogin::class)
             ->registration(CustomRegister::class)
             ->passwordReset(CustomRequestPasswordReset::class, CustomResetPassword::class)
-            ->plugins([
-                FilamentBackgroundsPlugin::make()
-                ->imageProvider(
-                    PublicHtmlImages::make()
-                        ->directory('images/backgrounds')
-                ),
-        ])
             ->colors([
                 // Tower Navy: shade 600 คือสีหลักของปุ่มและลิงก์
                 'primary' => [
@@ -76,6 +66,8 @@ class AdminPanelProvider extends PanelProvider
                 fn(): HtmlString => new HtmlString(
                     // ฟอนต์ของชื่อหน่วยข้างตรา (ใช้แค่ตรงนั้น)
                     '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700&display=swap">'
+                    // ภาพรันเวย์ที่แผงซ้ายของหน้า login
+                    . '<style>:root{--uta-login-photo:url("' . asset('images/backgrounds/bg2.jpg') . '")}</style>'
                     . '<style>' . file_get_contents(resource_path('css/filament-theme.css')) . '</style>'
                 ),
             )
