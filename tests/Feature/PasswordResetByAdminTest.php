@@ -62,7 +62,7 @@ class PasswordResetByAdminTest extends TestCase
 
     protected function titles(): array
     {
-        return collect(session('filament.notifications', []))->pluck('title')->all();
+        return $this->sentNotifications()->pluck('title')->all();
     }
 
     protected function requestByUsername(string $username)
@@ -113,7 +113,7 @@ class PasswordResetByAdminTest extends TestCase
         $first = PasswordResetRequest::query()->where('user_id', $user->id)->sole();
         $this->assertSame(PasswordResetRequest::STATUS_OPEN, $first->status);
 
-        session()->forget('filament.notifications');
+        $this->forgetNotifications();
         $this->requestByUsername($user->username);
 
         $this->assertSame([self::NEUTRAL], $this->titles());
@@ -136,7 +136,7 @@ class PasswordResetByAdminTest extends TestCase
         $deleted->delete();
 
         foreach (['no_such_user', $pending->username, $rejected->username, $deleted->username] as $username) {
-            session()->forget('filament.notifications');
+            $this->forgetNotifications();
             $this->requestByUsername($username)->assertHasNoFormErrors([], 'usernameForm');
             $this->assertSame([self::NEUTRAL], $this->titles(), $username);
             RateLimiter::clear($this->usernameLimiterKey());
@@ -157,7 +157,7 @@ class PasswordResetByAdminTest extends TestCase
         // หน้าต่างเป็นรายชั่วโมง
         $this->assertGreaterThan(60, RateLimiter::availableIn($this->usernameLimiterKey()));
 
-        session()->forget('filament.notifications');
+        $this->forgetNotifications();
         $this->requestByUsername($second->username);
 
         $this->assertNotContains(self::NEUTRAL, $this->titles());
@@ -184,7 +184,7 @@ class PasswordResetByAdminTest extends TestCase
             ->assertTableActionVisible('sendLink', $request)
             ->mountTableAction('sendLink', $request)
             // ช่องอีเมลแสดงเฉพาะบัญชีที่ยังไม่มีอีเมล; ค่าที่มีช่องว่างหัวท้ายถูกตัดออก
-            ->set('mountedTableActionsData.0.email', '  legacy@example.com  ')
+            ->fillForm(['email' => '  legacy@example.com  '])
             ->callMountedTableAction()
             ->assertHasNoTableActionErrors();
 
@@ -265,10 +265,11 @@ class PasswordResetByAdminTest extends TestCase
         $component = Livewire::test(ListPasswordResetRequests::class)
             ->assertTableActionVisible('sendLink', $request)
             ->mountTableAction('sendLink', $request);
-        $this->assertSame([], $component->instance()->getMountedTableActionForm()?->getComponents() ?? []);
+        $schema = $component->instance()->getMountedActionSchemaName();
+        $this->assertSame([], $component->instance()->getSchema($schema)?->getComponents() ?? []);
 
         $component
-            ->set('mountedTableActionsData.0.email', 'evil@example.com')
+            ->set('mountedActions.0.data.email', 'evil@example.com')
             ->callMountedTableAction()
             ->assertHasNoTableActionErrors();
 

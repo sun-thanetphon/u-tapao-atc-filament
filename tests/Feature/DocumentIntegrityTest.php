@@ -130,7 +130,7 @@ class DocumentIntegrityTest extends TestCase
         Livewire::test(ListDocuments::class)
             ->callTableAction('edit', $document, [
                 'file_path' => UploadedFile::fake()->create('fixed.pdf', 10, 'application/pdf'),
-                'require_reacknowledge' => false,
+                'require_reacknowledge' => 0,
             ])
             ->assertHasNoTableActionErrors();
 

@@ -99,7 +99,7 @@ class DocumentFileHistoryTest extends TestCase
         Livewire::test(ListDocuments::class)
             ->callTableAction('edit', $document, [
                 'file_path' => UploadedFile::fake()->create('fixed.pdf', 10, 'application/pdf'),
-                'require_reacknowledge' => false,
+                'require_reacknowledge' => 0,
                 'revision_note' => 'แก้คำผิดหน้า 3',
             ])
             ->assertHasNoTableActionErrors();
@@ -212,9 +212,6 @@ class DocumentFileHistoryTest extends TestCase
 
         Livewire::test(ListDocuments::class)
             ->mountTableAction('history', $document)
-            ->assertSee('ฉบับที่ 2')
-            ->assertSee('เพิ่มขั้นตอนฉุกเฉิน')
-            ->assertSee('ฉบับที่ 1')
-            ->assertSee('รับทราบ 1 คน');
+            ->assertMountedActionModalSee(['ฉบับที่ 2', 'เพิ่มขั้นตอนฉุกเฉิน', 'ฉบับที่ 1', 'รับทราบ 1 คน']);
     }
 }

@@ -57,7 +57,7 @@ class RegistrationTest extends TestCase
     {
         $this->submit()->assertHasNoFormErrors()->assertRedirect(Filament::getLoginUrl());
 
-        $titles = collect(session('filament.notifications', []))->pluck('title');
+        $titles = $this->sentNotifications()->pluck('title');
         $this->assertTrue($titles->contains('สมัครสำเร็จ รอผู้ดูแลอนุมัติ'));
 
         $user = User::where('username', 'newcomer')->firstOrFail();

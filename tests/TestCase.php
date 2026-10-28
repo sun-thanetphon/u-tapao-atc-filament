@@ -12,6 +12,7 @@ use Database\Seeders\DocumentCategorySeeder;
 use Database\Seeders\RankSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\SectionSeeder;
+use Filament\Notifications\NotificationMailbox;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -40,6 +41,29 @@ abstract class TestCase extends BaseTestCase
         }
 
         return parent::setUpTraits();
+    }
+
+    /** notification ที่ส่งแล้วในเทสต์นี้ (Filament 4 เก็บไว้ใน mailbox ไม่ใช่ session) */
+    private array $sentNotifications = [];
+
+    /**
+     * notification ทั้งหมดที่ส่งตั้งแต่เริ่มเทสต์ (หรือตั้งแต่ forgetNotifications ครั้งล่าสุด)
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    protected function sentNotifications(): \Illuminate\Support\Collection
+    {
+        $mailbox = app(NotificationMailbox::class);
+        $mailbox->flush();
+        array_push($this->sentNotifications, ...$mailbox->pull());
+
+        return collect($this->sentNotifications);
+    }
+
+    protected function forgetNotifications(): void
+    {
+        $this->sentNotifications();
+        $this->sentNotifications = [];
     }
 
     protected function seedReferenceData(): void

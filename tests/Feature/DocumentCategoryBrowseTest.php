@@ -128,12 +128,12 @@ class DocumentCategoryBrowseTest extends TestCase
         $this->actingAs($this->makeUser($adc));
 
         $all = Livewire::test(ListDocumentTasks::class);
-        $this->assertSame(3, $all->instance()->getCachedTabs()['pending']->getBadge());
+        $this->assertSame('3', $all->instance()->getCachedTabs()['pending']->getBadge());
         $this->assertStringContainsString('มีเอกสาร 3 ฉบับ', $all->instance()->getSubheading());
 
         // เลือกประเภทหลังหน้าโหลดแล้ว เหมือนการกดการ์ดจริง
         $qpOnly = Livewire::test(ListDocumentTasks::class)->set('category', (string) $qp->id);
-        $this->assertSame(2, $qpOnly->instance()->getCachedTabs()['pending']->getBadge());
+        $this->assertSame('2', $qpOnly->instance()->getCachedTabs()['pending']->getBadge());
         $this->assertStringContainsString('ในประเภทนี้ 2 ฉบับ', $qpOnly->instance()->getSubheading());
     }
 
