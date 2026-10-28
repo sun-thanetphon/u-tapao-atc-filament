@@ -2,13 +2,14 @@
 
 namespace App\Providers\Filament\Auth;
 
+use Filament\Auth\Pages\Login;
+use Filament\Auth\Http\Responses\Contracts\LoginResponse;
+use Filament\Schemas\Components\Component;
+use Filament\Schemas\Schema;
 use App\Enums\UserStatus;
 use App\Models\User;
-use Filament\Pages\Auth\Login;
-use Filament\Forms\Components\Component;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Validation\ValidationException;
-use Filament\Http\Responses\Auth\Contracts\LoginResponse;
 use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
 use Filament\Facades\Filament;
 use Filament\Models\Contracts\FilamentUser;
@@ -21,11 +22,6 @@ class CustomLogin extends Login
     {
         // โลโก้แสดงอยู่ในแผงภาพด้านซ้ายแล้ว
         return false;
-    }
-
-    public function getSubheading(): ?string
-    {
-        return 'Use your username and password';
     }
 
     public function authenticate(): ?LoginResponse
@@ -72,7 +68,7 @@ class CustomLogin extends Login
 
         if (
             ($user instanceof FilamentUser) &&
-            (! $user->canAccessPanel(Filament::getCurrentPanel()))
+            (! $user->canAccessPanel(Filament::getCurrentOrDefaultPanel()))
         ) {
             Filament::auth()->logout();
 
@@ -84,19 +80,14 @@ class CustomLogin extends Login
         return app(LoginResponse::class);
     }
 
-    protected function getForms(): array
+    public function form(Schema $schema): Schema
     {
-        return [
-            'form' => $this->form(
-                $this->makeForm()
-                    ->schema([
-                        $this->getUsernameFormComponent(),
-                        $this->getPasswordFormComponent(),
-                        $this->getRememberFormComponent(),
-                    ])
-                    ->statePath('data'),
-            ),
-        ];
+        return $schema
+            ->components([
+                $this->getUsernameFormComponent(),
+                $this->getPasswordFormComponent(),
+                $this->getRememberFormComponent(),
+            ]);
     }
 
     protected function getUsernameFormComponent(): Component

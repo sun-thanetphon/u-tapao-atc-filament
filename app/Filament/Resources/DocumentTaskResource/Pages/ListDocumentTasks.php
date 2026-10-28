@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\DocumentTaskResource\Pages;
 
+use Filament\Schemas\Components\Tabs\Tab;
 use App\Filament\Concerns\SearchesDocuments;
 use App\Filament\Resources\DocumentTaskResource;
 use App\Models\Document;
-use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Url;

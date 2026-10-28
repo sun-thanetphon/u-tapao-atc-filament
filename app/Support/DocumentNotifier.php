@@ -7,7 +7,7 @@ use App\Mail\NewDocumentMail;
 use App\Models\Document;
 use App\Models\User;
 use Carbon\Carbon;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +31,7 @@ class DocumentNotifier
     /**
      * ค่าช่องติ๊กส่งอีเมลจากฟอร์มของ action ที่กำลังทำงาน (ช่องนี้ไม่ถูกบันทึกลงฐานข้อมูล)
      */
-    public static function wantedIn(?Form $form): bool
+    public static function wantedIn(?Schema $form): bool
     {
         return (bool) ($form?->getRawState()['send_notification'] ?? false);
     }

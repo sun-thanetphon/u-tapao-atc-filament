@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\DocumentResource\Pages;
 
+use Filament\Actions\Action;
+use Filament\Actions\CreateAction;
 use App\Filament\Concerns\SearchesDocuments;
 use App\Filament\Resources\DocumentResource;
 use App\Enums\RoleEnum;
@@ -21,7 +23,7 @@ class ListDocuments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('remindAllPending')
+            Action::make('remindAllPending')
                 ->label('ส่งเมลเตือนรวมทุกเอกสารที่ค้าง')
                 ->icon('heroicon-o-envelope')
                 ->color('warning')
@@ -48,7 +50,7 @@ class ListDocuments extends ListRecords
                     app(PendingDocumentsReminder::class)->send();
                 }),
             // สร้าง/แก้ไขเอกสารเป็น modal บนหน้านี้ (ไม่มีหน้า create/edit แยก) จึงแจ้งอีเมลที่ hook นี้
-            Actions\CreateAction::make()
+            CreateAction::make()
                 ->after(function (Document $record, $livewire): void {
                     app(DocumentNotifier::class)->notify($record, DocumentNotifier::wantedIn($livewire->getMountedActionForm()));
                 }),

@@ -2,14 +2,14 @@
 
 namespace App\Notifications;
 
-use Filament\Notifications\Auth\ResetPassword as FilamentResetPassword;
+use Filament\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
 
 /**
  * อีเมลลิงก์ตั้งรหัสผ่านใหม่ภาษาไทย (ใช้แทนข้อความอังกฤษเริ่มต้นของ Filament)
  * ส่งผ่าน notifyNow เสมอ เพราะโฮสต์ไม่มี queue worker
  */
-class ResetPasswordThai extends FilamentResetPassword
+class ResetPasswordThai extends ResetPassword
 {
     public function toMail($notifiable): MailMessage
     {

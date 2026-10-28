@@ -2,6 +2,12 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Actions\Action;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Set;
+use App\Filament\Resources\PasswordResetRequestResource\Pages\ListPasswordResetRequests;
 use App\Enums\PermissionEnum;
 use App\Enums\RoleEnum;
 use App\Filament\Resources\PasswordResetRequestResource\Pages;
@@ -27,11 +33,11 @@ class PasswordResetRequestResource extends Resource
 {
     protected static ?string $model = PasswordResetRequest::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-key';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-key';
 
     protected static ?int $navigationSort = 2;
 
-    protected static ?string $navigationGroup = 'Accounts';
+    protected static string | \UnitEnum | null $navigationGroup = 'Accounts';
 
     protected static ?string $navigationLabel = 'คำขอรีเซ็ตรหัสผ่าน';
 
@@ -216,42 +222,42 @@ class PasswordResetRequestResource extends Resource
             ->modifyQueryUsing(fn (Builder $query) => $query->with(['user.rank', 'handler']))
             ->defaultSort('created_at', 'desc')
             ->columns([
-                Tables\Columns\TextColumn::make('user.username')
+                TextColumn::make('user.username')
                     ->label('ผู้ขอ')
                     ->description(fn (PasswordResetRequest $record): string => trim(
                         ($record->user?->rank?->name ?? '') . ' ' . ($record->user?->firstname ?? '') . ' ' . ($record->user?->lastname ?? '')
                     ))
                     ->searchable(),
-                Tables\Columns\TextColumn::make('user.email')
+                TextColumn::make('user.email')
                     ->label('อีเมล')
                     ->placeholder('ไม่มีอีเมล'),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('ขอเมื่อ')
                     ->dateTime()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('status')
+                TextColumn::make('status')
                     ->label('สถานะ')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => $state === PasswordResetRequest::STATUS_OPEN ? 'รอดำเนินการ' : 'ดำเนินการแล้ว')
                     ->color(fn (string $state): string => $state === PasswordResetRequest::STATUS_OPEN ? 'warning' : 'success'),
-                Tables\Columns\TextColumn::make('handler.username')
+                TextColumn::make('handler.username')
                     ->label('ผู้ดำเนินการ')
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('handled_at')
+                TextColumn::make('handled_at')
                     ->label('ดำเนินการเมื่อ')
                     ->dateTime()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('status')
+                SelectFilter::make('status')
                     ->label('สถานะ')
                     ->options([
                         PasswordResetRequest::STATUS_OPEN => 'รอดำเนินการ',
                         PasswordResetRequest::STATUS_DONE => 'ดำเนินการแล้ว',
                     ]),
             ])
-            ->actions([
-                Tables\Actions\Action::make('sendLink')
+            ->recordActions([
+                Action::make('sendLink')
                     ->label('ส่งลิงก์ตั้งรหัสผ่านใหม่')
                     ->icon('heroicon-o-envelope')
                     ->requiresConfirmation()
@@ -259,26 +265,26 @@ class PasswordResetRequestResource extends Resource
                     ->modalDescription(fn (PasswordResetRequest $record): string => filled($record->user?->email)
                         ? 'ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่ ' . $record->user->email
                         : 'บัญชีนี้ยังไม่มีอีเมล กรอกอีเมลของผู้ใช้เพื่อส่งลิงก์ตั้งรหัสผ่านใหม่')
-                    ->form(fn (PasswordResetRequest $record): array => filled($record->user?->email) ? [] : [
-                        Forms\Components\TextInput::make('email')
+                    ->schema(fn (PasswordResetRequest $record): array => filled($record->user?->email) ? [] : [
+                        TextInput::make('email')
                             ->label('อีเมลของผู้ใช้')
                             ->helperText('บัญชีนี้ยังไม่มีอีเมล กรอกอีเมลของผู้ใช้เพื่อส่งลิงก์ตั้งรหัสผ่านใหม่')
                             ->required()
                             ->email()
                             ->maxLength(255)
-                            ->afterStateUpdated(fn (Forms\Set $set, ?string $state) => $set('email', trim((string) $state)))
+                            ->afterStateUpdated(fn (Set $set, ?string $state) => $set('email', trim((string) $state)))
                             ->rules([static::uniqueEmailRule($record->user_id)]),
                     ])
                     ->visible(fn (PasswordResetRequest $record) => static::canHandle($record))
                     ->action(fn (PasswordResetRequest $record, array $data) => static::sendLinkFor($record, $data['email'] ?? null)),
             ])
-            ->bulkActions([]);
+            ->toolbarActions([]);
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListPasswordResetRequests::route('/'),
+            'index' => ListPasswordResetRequests::route('/'),
         ];
     }
 }

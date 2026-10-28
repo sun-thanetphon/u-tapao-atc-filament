@@ -2,13 +2,13 @@
 
 namespace App\Providers\Filament\Auth;
 
+use Filament\Auth\Pages\PasswordReset\ResetPassword;
+use Filament\Auth\Http\Responses\Contracts\PasswordResetResponse;
+use Filament\Actions\Action;
 use App\Models\User;
 use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
 use Filament\Facades\Filament;
-use Filament\Http\Responses\Auth\Contracts\PasswordResetResponse;
-use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
-use Filament\Pages\Auth\PasswordReset\ResetPassword;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\CanResetPassword;
@@ -95,7 +95,7 @@ class CustomResetPassword extends ResetPassword
             ->title(self::INVALID_TOKEN_MESSAGE)
             ->body('กรุณาขอลิงก์ใหม่อีกครั้ง')
             ->actions([
-                NotificationAction::make('requestAgain')
+                Action::make('requestAgain')
                     ->label('ขอลิงก์ใหม่')
                     ->url(Filament::getRequestPasswordResetUrl())
                     ->button(),

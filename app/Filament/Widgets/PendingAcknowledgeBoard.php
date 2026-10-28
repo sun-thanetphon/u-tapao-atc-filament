@@ -9,7 +9,7 @@ use Filament\Widgets\Widget;
 
 class PendingAcknowledgeBoard extends Widget
 {
-    protected static string $view = 'filament.widgets.pending-acknowledge-board';
+    protected string $view = 'filament.widgets.pending-acknowledge-board';
 
     protected static bool $isLazy = false;
 
