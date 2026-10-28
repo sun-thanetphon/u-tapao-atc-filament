@@ -3,11 +3,12 @@
 namespace Tests\Unit;
 
 use App\Support\CaatDocumentType;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class CaatDocumentTypeTest extends TestCase
 {
-    /** @dataProvider names */
+    #[DataProvider('names')]
     public function test_classifies_by_title(string $name, ?string $expected): void
     {
         $this->assertSame($expected, CaatDocumentType::classify($name));
