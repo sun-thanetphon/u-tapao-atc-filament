@@ -22,7 +22,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Filament\Navigation\MenuItem;
+use Filament\Actions\Action;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Support\HtmlString;
 
@@ -53,14 +53,28 @@ class AdminPanelProvider extends PanelProvider
                     950 => '5, 11, 23',
                 ],
                 'gray' => Color::Slate,
-                'info' => Color::hex('#2E86C1'),
-                'warning' => Color::hex('#E8B400'),
-                'danger' => Color::hex('#C8102E'),
+                'info' => Color::generateV3Palette('#2E86C1'),
+                'warning' => Color::generateV3Palette('#E8B400'),
+                'danger' => Color::generateV3Palette('#C8102E'),
                 'success' => Color::Emerald,
             ])
             ->font('IBM Plex Sans Thai', provider: GoogleFontProvider::class)
             ->brandName('U-Tapao ATC')
             ->sidebarCollapsibleOnDesktop()
+            // Filament 4 จำโหมดสว่าง/มืดไว้ใต้ key ใหม่ ย้ายค่าที่ผู้ใช้เคยเลือกไว้ตอน Filament 3 มาให้ (ต้องทำก่อนสคริปต์ของ Filament อ่านค่า)
+            ->renderHook(
+                PanelsRenderHook::HEAD_START,
+                fn(): HtmlString => new HtmlString(<<<'HTML'
+                    <script>
+                        try {
+                            const legacy = localStorage.getItem('theme');
+                            if (legacy && localStorage.getItem('filament:theme:mode') === null) {
+                                localStorage.setItem('filament:theme:mode', legacy);
+                            }
+                        } catch (e) {}
+                    </script>
+                    HTML),
+            )
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn(): HtmlString => new HtmlString(
@@ -84,7 +98,7 @@ class AdminPanelProvider extends PanelProvider
                     HTML),
             )
             ->userMenuItems([
-                'profile' => MenuItem::make()->label('Change password')
+                'profile' => fn (Action $action): Action => $action->label('Change password')
                     ->icon('heroicon-o-key'),
             ])
             // local รันบน http จึงใช้ https ไม่ได้
@@ -93,12 +107,9 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogoHeight(fn() => request()->routeIs('filament.admin.auth.login') ? '10rem' : '3rem')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
-            ->pages([
-                Pages\Dashboard::class,
-            ])
             ->profile(ProfileEditCustom::class)
             ->renderHook(
-                \Filament\View\PanelsRenderHook::USER_MENU_BEFORE,
+                PanelsRenderHook::USER_MENU_BEFORE,
                 fn(): string => auth()->user()->getFullName(),
             )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')

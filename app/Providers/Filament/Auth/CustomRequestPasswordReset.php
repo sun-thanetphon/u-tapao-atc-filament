@@ -2,28 +2,28 @@
 
 namespace App\Providers\Filament\Auth;
 
+use Filament\Auth\Pages\PasswordReset\RequestPasswordReset;
+use Filament\Schemas\Components\Component;
+use Filament\Schemas\Schema;
 use App\Models\PasswordResetRequest;
 use App\Models\User;
 use App\Support\PasswordResetLink;
 use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
-use Filament\Forms\Components\Component;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
-use Filament\Pages\Auth\PasswordReset\RequestPasswordReset;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * @property Form $usernameForm
+ * @property Schema $usernameForm
  */
 class CustomRequestPasswordReset extends RequestPasswordReset
 {
     protected static string $layout = 'filament.layouts.login';
 
-    protected static string $view = 'filament.pages.auth.request-password-reset';
+    protected string $view = 'filament.pages.auth.request-password-reset';
 
     /**
      * @var array<string, mixed> | null
@@ -48,24 +48,18 @@ class CustomRequestPasswordReset extends RequestPasswordReset
         return 'ลืมรหัสผ่าน';
     }
 
-    /**
-     * @return array<int | string, string | Form>
-     */
-    protected function getForms(): array
+    public function usernameForm(Schema $schema): Schema
     {
-        return [
-            ...parent::getForms(),
-            'usernameForm' => $this->makeForm()
-                ->schema([
-                    TextInput::make('username')
-                        ->label('ชื่อผู้ใช้ (Username)')
-                        ->helperText('ผู้ดูแลระบบจะเพิ่มอีเมลให้บัญชีของคุณ แล้วส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมลนั้น')
-                        ->required()
-                        ->maxLength(255)
-                        ->autocomplete('username'),
-                ])
-                ->statePath('usernameData'),
-        ];
+        return $schema
+            ->components([
+                TextInput::make('username')
+                    ->label('ชื่อผู้ใช้ (Username)')
+                    ->helperText('ผู้ดูแลระบบจะเพิ่มอีเมลให้บัญชีของคุณ แล้วส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมลนั้น')
+                    ->required()
+                    ->maxLength(255)
+                    ->autocomplete('username'),
+            ])
+            ->statePath('usernameData');
     }
 
     protected function getEmailFormComponent(): Component

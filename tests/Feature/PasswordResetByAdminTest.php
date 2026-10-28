@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
+use Filament\Actions\Testing\TestAction;
 
 class PasswordResetByAdminTest extends TestCase
 {
@@ -62,7 +63,7 @@ class PasswordResetByAdminTest extends TestCase
 
     protected function titles(): array
     {
-        return collect(session('filament.notifications', []))->pluck('title')->all();
+        return $this->sentNotifications()->pluck('title')->all();
     }
 
     protected function requestByUsername(string $username)
@@ -113,7 +114,7 @@ class PasswordResetByAdminTest extends TestCase
         $first = PasswordResetRequest::query()->where('user_id', $user->id)->sole();
         $this->assertSame(PasswordResetRequest::STATUS_OPEN, $first->status);
 
-        session()->forget('filament.notifications');
+        $this->forgetNotifications();
         $this->requestByUsername($user->username);
 
         $this->assertSame([self::NEUTRAL], $this->titles());
@@ -136,7 +137,7 @@ class PasswordResetByAdminTest extends TestCase
         $deleted->delete();
 
         foreach (['no_such_user', $pending->username, $rejected->username, $deleted->username] as $username) {
-            session()->forget('filament.notifications');
+            $this->forgetNotifications();
             $this->requestByUsername($username)->assertHasNoFormErrors([], 'usernameForm');
             $this->assertSame([self::NEUTRAL], $this->titles(), $username);
             RateLimiter::clear($this->usernameLimiterKey());
@@ -157,7 +158,7 @@ class PasswordResetByAdminTest extends TestCase
         // หน้าต่างเป็นรายชั่วโมง
         $this->assertGreaterThan(60, RateLimiter::availableIn($this->usernameLimiterKey()));
 
-        session()->forget('filament.notifications');
+        $this->forgetNotifications();
         $this->requestByUsername($second->username);
 
         $this->assertNotContains(self::NEUTRAL, $this->titles());
@@ -181,12 +182,12 @@ class PasswordResetByAdminTest extends TestCase
         $request = $this->openRequestFor($legacy);
 
         Livewire::test(ListPasswordResetRequests::class)
-            ->assertTableActionVisible('sendLink', $request)
-            ->mountTableAction('sendLink', $request)
+            ->assertActionVisible(TestAction::make('sendLink')->table($request))
+            ->mountAction(TestAction::make('sendLink')->table($request))
             // ช่องอีเมลแสดงเฉพาะบัญชีที่ยังไม่มีอีเมล; ค่าที่มีช่องว่างหัวท้ายถูกตัดออก
-            ->set('mountedTableActionsData.0.email', '  legacy@example.com  ')
-            ->callMountedTableAction()
-            ->assertHasNoTableActionErrors();
+            ->fillForm(['email' => '  legacy@example.com  '])
+            ->callMountedAction()
+            ->assertHasNoFormErrors();
 
         $this->assertSame('legacy@example.com', $legacy->fresh()->email);
         $this->assertSame(['legacy@example.com'], $this->sentRecipients());
@@ -203,8 +204,8 @@ class PasswordResetByAdminTest extends TestCase
         $request = $this->openRequestFor($legacy);
 
         Livewire::test(ListPasswordResetRequests::class)
-            ->callTableAction('sendLink', $request, ['email' => 'taken@example.com'])
-            ->assertHasTableActionErrors(['email' => 'unique']);
+            ->callAction(TestAction::make('sendLink')->table($request), ['email' => 'taken@example.com'])
+            ->assertHasFormErrors(['email' => 'unique']);
 
         $this->assertNull($legacy->fresh()->email);
         $this->assertSame([], $this->sentRecipients());
@@ -226,8 +227,8 @@ class PasswordResetByAdminTest extends TestCase
         $request = $this->openRequestFor($legacy);
 
         Livewire::test(ListPasswordResetRequests::class)
-            ->callTableAction('sendLink', $request, ['email' => 'old@example.com'])
-            ->assertHasNoTableActionErrors();
+            ->callAction(TestAction::make('sendLink')->table($request), ['email' => 'old@example.com'])
+            ->assertHasNoFormErrors();
 
         $this->assertSame('old@example.com', $legacy->fresh()->email);
         $this->assertRequestDoneBy($request, $admin);
@@ -240,12 +241,12 @@ class PasswordResetByAdminTest extends TestCase
         $request = $this->openRequestFor($legacy);
 
         Livewire::test(ListPasswordResetRequests::class)
-            ->callTableAction('sendLink', $request, ['email' => 'not-an-email'])
-            ->assertHasTableActionErrors(['email' => 'email']);
+            ->callAction(TestAction::make('sendLink')->table($request), ['email' => 'not-an-email'])
+            ->assertHasFormErrors(['email' => 'email']);
 
         Livewire::test(ListPasswordResetRequests::class)
-            ->callTableAction('sendLink', $request, ['email' => ''])
-            ->assertHasTableActionErrors(['email' => 'required']);
+            ->callAction(TestAction::make('sendLink')->table($request), ['email' => ''])
+            ->assertHasFormErrors(['email' => 'required']);
 
         PasswordResetRequestResource::sendLinkFor($request, 'not-an-email');
         PasswordResetRequestResource::sendLinkFor($request, null);
@@ -263,14 +264,15 @@ class PasswordResetByAdminTest extends TestCase
 
         // ฟอร์มไม่มีช่องอีเมล และค่าที่ยัดเข้ามาทาง Livewire ถูกเมิน
         $component = Livewire::test(ListPasswordResetRequests::class)
-            ->assertTableActionVisible('sendLink', $request)
-            ->mountTableAction('sendLink', $request);
-        $this->assertSame([], $component->instance()->getMountedTableActionForm()?->getComponents() ?? []);
+            ->assertActionVisible(TestAction::make('sendLink')->table($request))
+            ->mountAction(TestAction::make('sendLink')->table($request));
+        $schema = $component->instance()->getMountedActionSchemaName();
+        $this->assertSame([], $component->instance()->getSchema($schema)?->getComponents() ?? []);
 
         $component
-            ->set('mountedTableActionsData.0.email', 'evil@example.com')
-            ->callMountedTableAction()
-            ->assertHasNoTableActionErrors();
+            ->set('mountedActions.0.data.email', 'evil@example.com')
+            ->callMountedAction()
+            ->assertHasNoFormErrors();
 
         $this->assertSame('person@example.com', $user->fresh()->email);
         $this->assertSame(['person@example.com'], $this->sentRecipients());
@@ -297,8 +299,8 @@ class PasswordResetByAdminTest extends TestCase
         Event::listen(NotificationSending::class, fn () => throw new \RuntimeException('smtp down'));
 
         Livewire::test(ListPasswordResetRequests::class)
-            ->callTableAction('sendLink', $request, ['email' => 'legacy@example.com'])
-            ->assertHasNoTableActionErrors();
+            ->callAction(TestAction::make('sendLink')->table($request), ['email' => 'legacy@example.com'])
+            ->assertHasNoFormErrors();
 
         $this->assertNull($legacy->fresh()->email);
         $this->assertRequestStillOpen($request);
@@ -394,8 +396,8 @@ class PasswordResetByAdminTest extends TestCase
         $admin = $this->actingAdmin();
 
         Livewire::test(ListPasswordResetRequests::class)
-            ->assertTableActionHidden('sendLink', $rootRequest)
-            ->assertTableActionVisible('sendLink', $otherRequest);
+            ->assertActionHidden(TestAction::make('sendLink')->table($rootRequest))
+            ->assertActionVisible(TestAction::make('sendLink')->table($otherRequest));
 
         // บังคับฝั่งเซิร์ฟเวอร์ด้วย แม้เรียกตรง
         try {
@@ -410,17 +412,17 @@ class PasswordResetByAdminTest extends TestCase
 
         // admin ส่งลิงก์ให้ admin คนอื่นได้
         Livewire::test(ListPasswordResetRequests::class)
-            ->callTableAction('sendLink', $otherRequest, ['email' => 'other-admin@example.com'])
-            ->assertHasNoTableActionErrors();
+            ->callAction(TestAction::make('sendLink')->table($otherRequest), ['email' => 'other-admin@example.com'])
+            ->assertHasNoFormErrors();
         $this->assertSame('other-admin@example.com', $otherAdmin->fresh()->email);
         $this->assertRequestDoneBy($otherRequest, $admin);
 
         // super-admin จัดการ id 1 ได้
         $super = $this->actingAdmin(RoleEnum::SUPERADMIN);
         Livewire::test(ListPasswordResetRequests::class)
-            ->assertTableActionVisible('sendLink', $rootRequest)
-            ->callTableAction('sendLink', $rootRequest, ['email' => 'root@example.com'])
-            ->assertHasNoTableActionErrors();
+            ->assertActionVisible(TestAction::make('sendLink')->table($rootRequest))
+            ->callAction(TestAction::make('sendLink')->table($rootRequest), ['email' => 'root@example.com'])
+            ->assertHasNoFormErrors();
         $this->assertSame('root@example.com', $root->fresh()->email);
         $this->assertRequestDoneBy($rootRequest, $super);
     }

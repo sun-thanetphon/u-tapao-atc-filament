@@ -14,6 +14,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Filament\Actions\Testing\TestAction;
 
 /**
  * ความสมบูรณ์ของเอกสารและหลักฐานการรับทราบ:
@@ -109,8 +110,8 @@ class DocumentIntegrityTest extends TestCase
 
         Livewire::test(ListDocumentTasks::class, ['activeTab' => 'pending'])
             ->assertCanSeeTableRecords([$document])
-            ->callTableAction('acknowledge', $document)
-            ->assertHasNoTableActionErrors();
+            ->callAction(TestAction::make('acknowledge')->table($document))
+            ->assertHasNoFormErrors();
 
         $this->assertSame(
             [1, 2],
@@ -128,11 +129,11 @@ class DocumentIntegrityTest extends TestCase
         $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::ADMIN));
 
         Livewire::test(ListDocuments::class)
-            ->callTableAction('edit', $document, [
+            ->callAction(TestAction::make('edit')->table($document), [
                 'file_path' => UploadedFile::fake()->create('fixed.pdf', 10, 'application/pdf'),
-                'require_reacknowledge' => false,
+                'require_reacknowledge' => 0,
             ])
-            ->assertHasNoTableActionErrors();
+            ->assertHasNoFormErrors();
 
         $document->refresh();
         $this->assertNotSame('documents/test.pdf', $document->file_path);
@@ -149,10 +150,10 @@ class DocumentIntegrityTest extends TestCase
         $this->actingAs($this->makeUser($this->section('ADC'), RoleEnum::ADMIN));
 
         Livewire::test(ListDocuments::class)
-            ->callTableAction('edit', $document, [
+            ->callAction(TestAction::make('edit')->table($document), [
                 'file_path' => UploadedFile::fake()->create('new.pdf', 10, 'application/pdf'),
             ])
-            ->assertHasNoTableActionErrors();
+            ->assertHasNoFormErrors();
 
         $document->refresh();
         $this->assertSame(2, $document->revision);

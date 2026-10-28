@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Filament\Actions\Testing\TestAction;
 
 class DocumentNotificationTest extends TestCase
 {
@@ -60,7 +61,7 @@ class DocumentNotificationTest extends TestCase
 
     protected function titles(): array
     {
-        return collect(session('filament.notifications', []))->pluck('title')->all();
+        return $this->sentNotifications()->pluck('title')->all();
     }
 
     protected function deliverDeferred(): void
@@ -518,12 +519,12 @@ class DocumentNotificationTest extends TestCase
         $draft = $this->publishedDoc(['publish' => false]);
 
         Livewire::test(ListDocuments::class)
-            ->mountTableAction('edit', $draft)
-            ->assertFormSet(['send_notification' => false], 'mountedTableActionForm');
+            ->mountAction(TestAction::make('edit')->table($draft))
+            ->assertSchemaStateSet(['send_notification' => false]);
 
         Livewire::test(ListDocuments::class)
             ->mountAction(CreateAction::class)
-            ->assertFormSet(['send_notification' => true], 'mountedActionForm');
+            ->assertSchemaStateSet(['send_notification' => true]);
     }
 
     // ---- ผ่านฟอร์มจริง (modal บนหน้ารายการเอกสาร) ----
@@ -561,7 +562,7 @@ class DocumentNotificationTest extends TestCase
 
         Livewire::test(ListDocuments::class)
             ->callAction(CreateAction::class, $this->createData())
-            ->assertHasNoActionErrors();
+            ->assertHasNoFormErrors();
         $this->assertContains(self::SENT_TITLE, $this->titles());
 
         $document = Document::query()->where('name', 'เอกสารฟอร์ม')->firstOrFail();
@@ -577,8 +578,8 @@ class DocumentNotificationTest extends TestCase
         $this->recipient('ADC');
 
         Livewire::test(ListDocuments::class)
-            ->callAction(CreateAction::class, $this->createData(['send_notification' => false]))
-            ->assertHasNoActionErrors();
+            ->callAction(CreateAction::class, $this->createData(['send_notification' => 0]))
+            ->assertHasNoFormErrors();
         $this->assertNotContains(self::SENT_TITLE, $this->titles());
 
         Mail::assertNothingSent();
@@ -593,7 +594,7 @@ class DocumentNotificationTest extends TestCase
         $this->recipient('ADC');
 
         Livewire::test(ListDocuments::class)
-            ->callAction(CreateAction::class, $this->createData(['publish' => false]));
+            ->callAction(CreateAction::class, $this->createData(['publish' => 0]));
         $this->assertNotContains(self::SENT_TITLE, $this->titles());
         Mail::assertNothingSent();
 
@@ -601,8 +602,8 @@ class DocumentNotificationTest extends TestCase
         $this->assertNull($document->notified_at);
 
         Livewire::test(ListDocuments::class)
-            ->callTableAction('edit', $document, ['publish' => true, 'send_notification' => true])
-            ->assertHasNoTableActionErrors();
+            ->callAction(TestAction::make('edit')->table($document), ['publish' => true, 'send_notification' => true])
+            ->assertHasNoFormErrors();
         $this->assertContains(self::SENT_TITLE, $this->titles());
 
         $notifiedAt = $document->fresh()->notified_at;
@@ -611,9 +612,9 @@ class DocumentNotificationTest extends TestCase
 
         // แก้ไขอีกครั้ง ไม่ส่งซ้ำ และไม่แตะ notified_at
         $this->travel(5)->minutes();
-        session()->forget('filament.notifications');
+        $this->forgetNotifications();
         Livewire::test(ListDocuments::class)
-            ->callTableAction('edit', $document->fresh(), ['name' => 'ชื่อใหม่', 'send_notification' => true]);
+            ->callAction(TestAction::make('edit')->table($document->fresh()), ['name' => 'ชื่อใหม่', 'send_notification' => true]);
         $this->assertNotContains(self::SENT_TITLE, $this->titles());
         $this->assertTrue($notifiedAt->equalTo($document->fresh()->notified_at));
     }
@@ -626,12 +627,12 @@ class DocumentNotificationTest extends TestCase
         Document::whereKey($notified->id)->update(['notified_at' => now()]);
 
         Livewire::test(ListDocuments::class)
-            ->mountTableAction('edit', $fresh)
-            ->assertFormFieldIsVisible('send_notification', 'mountedTableActionForm');
+            ->mountAction(TestAction::make('edit')->table($fresh))
+            ->assertFormFieldVisible('send_notification');
 
         Livewire::test(ListDocuments::class)
-            ->mountTableAction('edit', $notified->fresh())
-            ->assertFormFieldIsHidden('send_notification', 'mountedTableActionForm');
+            ->mountAction(TestAction::make('edit')->table($notified->fresh()))
+            ->assertFormFieldHidden('send_notification');
     }
 
     public function test_table_publish_toggle_does_not_send(): void

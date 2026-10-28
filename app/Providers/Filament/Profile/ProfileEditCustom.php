@@ -2,27 +2,20 @@
 
 namespace App\Providers\Filament\Profile;
 
+use Filament\Auth\Pages\EditProfile;
 use App\Filament\Resources\UserResource;
-use Filament\Pages\Auth\EditProfile;
+use Filament\Schemas\Schema;
 
 class ProfileEditCustom extends EditProfile
 {
 
-    protected function getForms(): array
+    public function form(Schema $schema): Schema
     {
-        return [
-            'form' => $this->form(
-                $this->makeForm()
-                    ->schema([
-                        UserResource::emailField(),
-                        $this->getPasswordFormComponent(),
-                        $this->getPasswordConfirmationFormComponent(),
-                    ])
-                    ->operation('edit')
-                    ->model($this->getUser())
-                    ->statePath('data')
-                    ->inlineLabel(! static::isSimple()),
-            ),
-        ];
+        return $schema
+            ->components([
+                UserResource::emailField(),
+                $this->getPasswordFormComponent(),
+                $this->getPasswordConfirmationFormComponent(),
+            ]);
     }
 }

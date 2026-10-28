@@ -98,6 +98,25 @@ class LoginLogTest extends TestCase
         $this->assertTrue(LoginLogResource::canAccess());
     }
 
+    public function test_nobody_can_create_edit_or_delete_login_logs(): void
+    {
+        $log = LoginLog::create(['username' => 'somebody', 'event' => LoginLog::EVENT_LOGIN, 'ip_address' => '203.0.113.7']);
+
+        // Filament 4 ถามสิทธิ์ผ่าน get*AuthorizationResponse() ซึ่ง Gate::before ให้ super-admin ผ่านทุกอย่าง
+        foreach ([RoleEnum::SUPERADMIN, RoleEnum::ADMIN, RoleEnum::USER] as $role) {
+            $this->actingAs($this->makeUser($this->section('ADC'), $role));
+
+            $this->assertFalse(LoginLogResource::getCreateAuthorizationResponse()->allowed(), $role);
+            $this->assertFalse(LoginLogResource::getEditAuthorizationResponse($log)->allowed(), $role);
+            $this->assertFalse(LoginLogResource::getDeleteAuthorizationResponse($log)->allowed(), $role);
+            $this->assertFalse(LoginLogResource::getDeleteAnyAuthorizationResponse()->allowed(), $role);
+            $this->assertFalse(LoginLogResource::canCreate(), $role);
+            $this->assertFalse(LoginLogResource::canEdit($log), $role);
+            $this->assertFalse(LoginLogResource::canDelete($log), $role);
+            $this->assertFalse(LoginLogResource::canDeleteAny(), $role);
+        }
+    }
+
     public function test_super_admin_sees_rows_and_admin_gets_forbidden(): void
     {
         $section = $this->section('ADC');

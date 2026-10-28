@@ -2,6 +2,26 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\ToggleButtons;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\Action;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\DocumentResource\Pages\ListDocuments;
+use App\Filament\Resources\DocumentResource\Pages\FollowDocument;
 use App\Enums\PermissionEnum;
 use App\Enums\RoleEnum;
 use App\Filament\Resources\DocumentResource\Pages;
@@ -12,24 +32,22 @@ use App\Models\Section;
 use App\Models\User;
 use App\Support\DocumentNotifier;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Collection;
-use Filament\Tables\Enums\ActionsPosition;
 
 class DocumentResource extends Resource
 {
     protected static ?string $model = Document::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-rectangle-stack';
 
     protected static ?int $navigationSort = 2;
 
-    protected static ?string $navigationGroup = 'Document Management';
+    protected static string | \UnitEnum | null $navigationGroup = 'Document Management';
 
     public static function canAccess(): bool
     {
@@ -47,13 +65,13 @@ class DocumentResource extends Resource
         return collect($ids)->map(fn ($id) => $prefixes[(int) $id] ?? '')->filter()->implode(', ');
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make()
+        return $schema
+            ->components([
+                \Filament\Schemas\Components\Section::make()
                     ->schema([
-                        Forms\Components\Select::make('view_sections')
+                        Select::make('view_sections')
                             ->label('แผนกที่ต้องเห็นเอกสาร')
                             ->required()
                             ->options(function () {
@@ -61,32 +79,32 @@ class DocumentResource extends Resource
                                     return [$section->id => "{$section->name} ({$section->prefix})"];
                                 });
                             })
-                            ->afterStateUpdated(function (Forms\Set $set) {
+                            ->afterStateUpdated(function (Set $set) {
                                 $set('acknowledge_sections', []);
                             })
                             ->multiple()
                             ->live(),
-                        Forms\Components\Select::make('acknowledge_sections')
+                        Select::make('acknowledge_sections')
                             ->label('แผนกที่ต้องรับทราบเอกสาร')
                             ->multiple()
-                            ->options(function (Forms\Get $get): Collection {
+                            ->options(function (Get $get): Collection {
                                 return Section::whereIn('id', $get('view_sections'))->get()->mapWithKeys(function ($section) {
                                     return [$section->id => "{$section->name} ({$section->prefix})"];
                                 });
                             }),
-                        Forms\Components\Select::make('category_id')
+                        Select::make('category_id')
                             ->label('ประเภทเอกสาร')
                             ->required()
                             ->searchable()
                             ->preload()
                             ->relationship('category', 'name'),
-                        Forms\Components\TextInput::make('name')
+                        TextInput::make('name')
                             ->label('ชื่อเอกสาร')
                             ->required()
                             ->maxLength(255),
 
                     ])->columns(2),
-                Forms\Components\FileUpload::make('file_path')
+                FileUpload::make('file_path')
                     ->label('File Upload')
                     ->columnSpanFull()
                     ->directory('documents')
@@ -95,7 +113,7 @@ class DocumentResource extends Resource
                     ->maxSize(104857600)
                     ->maxFiles(1)
                     ->required(),
-                Forms\Components\ToggleButtons::make('require_reacknowledge')
+                ToggleButtons::make('require_reacknowledge')
                     ->label('ถ้าเปลี่ยนไฟล์ ผู้ใช้ต้องรับทราบใหม่หรือไม่?')
                     ->helperText('เลือก "ไม่ต้อง" ถ้าเป็นการแก้ไขเล็กน้อย เช่น แก้คำผิด ผู้ที่รับทราบแล้วจะไม่ต้องรับทราบซ้ำ และไม่ส่งอีเมลแจ้งใหม่')
                     ->boolean('ต้องรับทราบใหม่', 'ไม่ต้อง (แก้ไขเล็กน้อย)')
@@ -108,7 +126,7 @@ class DocumentResource extends Resource
                     ->dehydrated(false)
                     // มีผลเฉพาะตอนแก้ไขเอกสารที่ต้องรับทราบ
                     ->visible(fn (?Document $record): bool => $record?->isNeedToAck() ?? false),
-                Forms\Components\TextInput::make('revision_note')
+                TextInput::make('revision_note')
                     ->label('ไฟล์ใหม่เปลี่ยนอะไร (ไม่บังคับ)')
                     ->helperText('บันทึกไว้ในประวัติฉบับเมื่อเปลี่ยนไฟล์')
                     ->maxLength(255)
@@ -117,17 +135,17 @@ class DocumentResource extends Resource
                     ->dehydrated(false)
                     // มีผลเฉพาะตอนแก้ไขเอกสาร
                     ->visible(fn (?Document $record): bool => $record !== null),
-                Forms\Components\Section::make()
+                \Filament\Schemas\Components\Section::make()
                     ->description('ต้องการประกาศให้เป็นสาธารณะหรือไม่?')
                     ->schema([
-                        Forms\Components\ToggleButtons::make('publish')
+                        ToggleButtons::make('publish')
                             ->label('การเผยแพร่')
                             ->boolean('เผยแพร่', 'ซ่อน')
                             ->icons([1 => 'heroicon-m-eye', 0 => 'heroicon-m-eye-slash'])
                             ->grouped()
                             ->required()
                             ->default(true),
-                        Forms\Components\ToggleButtons::make('send_notification')
+                        ToggleButtons::make('send_notification')
                             ->label('ส่งอีเมลแจ้งเตือนผู้ที่ต้องรับทราบ')
                             ->helperText('ส่งครั้งเดียวเมื่อเผยแพร่เอกสารที่ต้องรับทราบ ถ้าเลือก "ไม่ส่ง" ตอนนี้ ยังเลือกส่งภายหลังจากหน้าแก้ไขได้')
                             ->boolean('ส่ง', 'ไม่ส่ง')
@@ -152,51 +170,51 @@ class DocumentResource extends Resource
             ->searchDebounce('400ms')
             ->defaultSort('created_at', 'desc')
             ->columns([
-                Tables\Columns\TextColumn::make('code')
+                TextColumn::make('code')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('category.name')
+                TextColumn::make('category.name')
                     ->label('ประเภทเอกสาร')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->label('ชื่อเอกสาร')
                     ->searchable(),
-                Tables\Columns\ToggleColumn::make('publish')
+                ToggleColumn::make('publish')
                     ->onIcon('heroicon-o-eye') // กำหนดไอคอนเมื่อเปิด (เมื่อค่าเป็น true)
                     ->offIcon('heroicon-o-x-mark')    // กำหนดไอคอนเมื่อปิด (เมื่อค่าเป็น false)
                     ->onColor('success')        // กำหนดสีเมื่อเปิด (สามารถใช้สีเช่น success, danger, info, etc.)
                     ->offColor('danger'),
-                Tables\Columns\TextColumn::make('view_sections')
+                TextColumn::make('view_sections')
                     ->alignCenter()
                     ->formatStateUsing(fn ($record) => static::sectionPrefixes($record->view_sections))
 
                     ->label('แผนกที่ต้องเห็นเอกสาร'),
-                Tables\Columns\TextColumn::make('acknowledge_sections')
+                TextColumn::make('acknowledge_sections')
                     ->alignCenter()
                     ->formatStateUsing(fn ($record) => static::sectionPrefixes($record->acknowledge_sections))
 
                     ->label('แผนกที่ต้องรับทราบเอกสาร'),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('category_id')
+                SelectFilter::make('category_id')
                     ->label('เลือกประเภทเอกสาร')
                     ->multiple()
                     ->preload()
                     ->searchable()
                     ->columnSpan(2)
                     ->options(DocumentCategory::all()->pluck('name', 'id'))
-            ], Tables\Enums\FiltersLayout::AboveContent)
-            ->actions([
+            ], FiltersLayout::AboveContent)
+            ->recordActions([
 
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\Action::make('viewPdf')
+                ActionGroup::make([
+                    Action::make('viewPdf')
                         ->url(function ($record) {
                             $filePath = $record->file_path;
                             $pathParts = explode('/', $filePath);
@@ -208,7 +226,7 @@ class DocumentResource extends Resource
                         ->icon('heroicon-o-eye')
                         ->label('อ่าน')
                         ->openUrlInNewTab(),
-                    Tables\Actions\Action::make('history')
+                    Action::make('history')
                         ->label('ประวัติฉบับ')
                         ->icon('heroicon-o-clock')
                         ->color('gray')
@@ -223,30 +241,30 @@ class DocumentResource extends Resource
                         ]))
                         ->modalSubmitAction(false)
                         ->modalCancelActionLabel('ปิด'),
-                    Tables\Actions\Action::make('follow')
+                    Action::make('follow')
                         ->icon('heroicon-o-arrow-trending-up')
                         ->hidden(function ($record) {
                             return !auth()->user()->hasRole(RoleEnum::SUPERADMIN) || !$record->isNeedToAck();
                         })
                         ->label('ติดตามการรับทราบ')
                         ->url(fn(Document $record): string => route('filament.admin.resources.documents.follow', $record)),
-                    Tables\Actions\EditAction::make()
+                    EditAction::make()
                         ->before(function (Document $record, $livewire): void {
-                            $raw = $livewire->getMountedTableActionForm()?->getRawState() ?? [];
+                            $raw = $livewire->getSchema($livewire->getMountedActionSchemaName())?->getRawState() ?? [];
                             $record->keepRevision = ! ($raw['require_reacknowledge'] ?? true);
                             $record->revisionNote = trim((string) ($raw['revision_note'] ?? '')) ?: null;
                         })
                         ->after(function (Document $record, $livewire): void {
-                            app(DocumentNotifier::class)->notify($record, DocumentNotifier::wantedIn($livewire->getMountedTableActionForm()));
+                            app(DocumentNotifier::class)->notify($record, DocumentNotifier::wantedIn($livewire->getSchema($livewire->getMountedActionSchemaName())));
                         }),
-                    Tables\Actions\DeleteAction::make(),
+                    DeleteAction::make(),
                 ])
                     ->button()
 
-            ], position: ActionsPosition::BeforeColumns)
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ], position: RecordActionsPosition::BeforeColumns)
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -261,8 +279,8 @@ class DocumentResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListDocuments::route('/'),
-            'follow' => Pages\FollowDocument::route('/{record}/follow'),
+            'index' => ListDocuments::route('/'),
+            'follow' => FollowDocument::route('/{record}/follow'),
         ];
     }
 }

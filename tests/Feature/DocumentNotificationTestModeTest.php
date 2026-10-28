@@ -57,7 +57,7 @@ class DocumentNotificationTestModeTest extends TestCase
 
     protected function titles(): array
     {
-        return collect(session('filament.notifications', []))->pluck('title')->all();
+        return $this->sentNotifications()->pluck('title')->all();
     }
 
     protected function render(NewDocumentMail $mail): string

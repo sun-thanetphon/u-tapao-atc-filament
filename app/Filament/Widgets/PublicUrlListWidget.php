@@ -12,7 +12,7 @@ use Illuminate\Support\Collection;
  */
 abstract class PublicUrlListWidget extends Widget
 {
-    protected static string $view = 'filament.widgets.public-url-list';
+    protected string $view = 'filament.widgets.public-url-list';
 
     protected static ?string $heading = null;
 

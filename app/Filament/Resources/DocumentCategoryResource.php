@@ -2,12 +2,17 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\TextInput;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use App\Filament\Resources\DocumentCategoryResource\Pages\ListDocumentCategories;
 use App\Enums\PermissionEnum;
 use App\Filament\Resources\DocumentCategoryResource\Pages;
 use App\Filament\Resources\DocumentCategoryResource\RelationManagers;
 use App\Models\DocumentCategory;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -18,22 +23,22 @@ class DocumentCategoryResource extends Resource
 {
     protected static ?string $model = DocumentCategory::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-squares-plus';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-squares-plus';
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationGroup = 'Document Management';
+    protected static string | \UnitEnum | null $navigationGroup = 'Document Management';
 
     public static function canAccess(): bool
     {
         return auth()->user()->can(PermissionEnum::CATEGORY_VIEW);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
+        return $schema
+            ->components([
+                TextInput::make('name')
                     ->required()
                     ->maxLength(255),
             ]);
@@ -43,13 +48,13 @@ class DocumentCategoryResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -57,12 +62,12 @@ class DocumentCategoryResource extends Resource
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make(),
 
             ])
-            ->bulkActions([
+            ->toolbarActions([
                 // Tables\Actions\BulkActionGroup::make([
                 //     Tables\Actions\DeleteBulkAction::make(),
                 // ]),
@@ -79,7 +84,7 @@ class DocumentCategoryResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListDocumentCategories::route('/'),
+            'index' => ListDocumentCategories::route('/'),
             // 'create' => Pages\CreateDocumentCategory::route('/create'),
             // 'edit' => Pages\EditDocumentCategory::route('/{record}/edit'),
         ];

@@ -7,7 +7,7 @@ use Filament\Widgets\Widget;
 
 class SectionProgress extends Widget
 {
-    protected static string $view = 'filament.widgets.section-progress';
+    protected string $view = 'filament.widgets.section-progress';
 
     protected static bool $isLazy = false;
 

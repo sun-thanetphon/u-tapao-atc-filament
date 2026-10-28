@@ -30,9 +30,9 @@ class CredentialExpiry extends Page
     /** admin ที่ได้สิทธิ์รีเฟรชชีตด้วย (ร.ท.ลิขิต ร่วมสุข) */
     private const SHEET_REFRESH_ADMIN_USERNAME = 'limaromeo';
 
-    protected static ?string $navigationIcon = 'heroicon-o-identification';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-identification';
 
-    protected static ?string $navigationGroup = 'Accounts';
+    protected static string | \UnitEnum | null $navigationGroup = 'Accounts';
 
     protected static ?string $navigationLabel = 'วันหมดอายุใบอนุญาต';
 
@@ -40,7 +40,7 @@ class CredentialExpiry extends Page
 
     protected static ?int $navigationSort = 4;
 
-    protected static string $view = 'filament.pages.credential-expiry';
+    protected string $view = 'filament.pages.credential-expiry';
 
     public static function canAccess(): bool
     {

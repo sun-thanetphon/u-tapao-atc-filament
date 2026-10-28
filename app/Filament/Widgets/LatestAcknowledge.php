@@ -7,7 +7,7 @@ use Filament\Widgets\Widget;
 
 class LatestAcknowledge extends Widget
 {
-    protected static string $view = 'filament.widgets.latest-acknowledge';
+    protected string $view = 'filament.widgets.latest-acknowledge';
 
     protected static bool $isLazy = false;
 

@@ -385,13 +385,13 @@ class EmailImportTest extends TestCase
 
         Livewire::actingAs($actor)->test(ListUsers::class)
             ->callAction('importEmails', $this->importData($file))
-            ->assertHasNoActionErrors();
+            ->assertHasNoFormErrors();
 
         $this->assertSame('person1@example.test', $a->fresh()->email);
         $this->assertSame('has@example.test', $b->fresh()->email);
         $this->assertSame([], Storage::disk('local')->allFiles('email-imports'), 'ไฟล์ชั่วคราวต้องถูกลบหลังนำเข้า');
 
-        $body = collect(session('filament.notifications', []))->pluck('body')->implode(' ');
+        $body = $this->sentNotifications()->pluck('body')->implode(' ');
         $this->assertStringContainsString('อัปเดต 1 ผู้ใช้ / ไม่เปลี่ยนแปลง 0 / ข้าม 2 แถว', $body);
 
         Log::shouldHaveReceived('info')->withArgs(function ($message, $context = []) use ($actor) {
@@ -411,13 +411,13 @@ class EmailImportTest extends TestCase
 
         $component = Livewire::actingAs($actor)->test(ListUsers::class)
             ->mountAction('importEmails')
-            ->setActionData($this->importData($file))
-            ->assertHasNoActionErrors()
-            ->assertSee('ไม่พบ username นี้');
+            ->fillForm($this->importData($file))
+            ->assertHasNoFormErrors()
+            ->assertMountedActionModalSee('ไม่พบ username นี้');
 
         $this->assertNull($a->fresh()->email, 'ดูตัวอย่างต้องไม่เขียนฐานข้อมูล');
 
-        $component->callMountedAction()->assertHasNoActionErrors();
+        $component->callMountedAction()->assertHasNoFormErrors();
         $this->assertSame('person1@example.test', $a->fresh()->email);
     }
 
@@ -429,7 +429,7 @@ class EmailImportTest extends TestCase
 
         Livewire::actingAs($actor)->test(ListUsers::class)
             ->callAction('importEmails', $this->importData($file))
-            ->assertHasActionErrors(['file']);
+            ->assertHasFormErrors(['file']);
 
         $this->assertNull($a->fresh()->email);
     }
@@ -450,7 +450,7 @@ class EmailImportTest extends TestCase
 ");
 
         $component->call('mountAction', 'importEmails')
-            ->set('mountedActionsData.0', ['file' => ['x' => 'email-imports/valid.csv'], 'overwrite' => false])
+            ->set('mountedActions.0.data', ['file' => ['x' => 'email-imports/valid.csv'], 'overwrite' => false])
             ->call('callMountedAction');
 
         $this->assertNull($a->fresh()->email);
@@ -487,9 +487,9 @@ class EmailImportTest extends TestCase
             Livewire::actingAs($actor)->test(ListUsers::class)
                 ->callAction('importEmails', ['file' => ['x' => $path], 'overwrite' => false]);
 
-            $titles = collect(session('filament.notifications', []))->pluck('title')->implode(' ');
+            $titles = $this->sentNotifications()->pluck('title')->implode(' ');
             $this->assertStringContainsString('ไม่พบไฟล์ที่อัปโหลด', $titles, $path);
-            session()->forget('filament.notifications');
+            $this->forgetNotifications();
         }
 
         $this->assertTrue(Storage::disk('local')->exists('documents/a.pdf'));
@@ -673,7 +673,7 @@ class EmailImportTest extends TestCase
         Livewire::actingAs($actor)->test(ListUsers::class)
             ->callAction('importEmails', ['file' => ['x' => "email-imports/x.csv\n"], 'overwrite' => false]);
 
-        $titles = collect(session('filament.notifications', []))->pluck('title')->implode(' ');
+        $titles = $this->sentNotifications()->pluck('title')->implode(' ');
         $this->assertStringContainsString('ไม่พบไฟล์ที่อัปโหลด', $titles);
 
         foreach (["email-imports/x.csv\n", ''] as $path) {
