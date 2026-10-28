@@ -9,6 +9,7 @@ use App\Support\CategoryStyle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Filament\Actions\Testing\TestAction;
 
 /**
  * หน้าเอกสารของฉัน เลือกดูตามประเภทเอกสาร
@@ -148,7 +149,7 @@ class DocumentCategoryBrowseTest extends TestCase
         $component = Livewire::test(ListDocumentTasks::class, ['activeTab' => 'pending']);
         $this->assertSame(1, collect($component->instance()->categoryCards())->firstWhere('key', (string) $wi->id)['pending']);
 
-        $component->callTableAction('acknowledge', $document);
+        $component->callAction(TestAction::make('acknowledge')->table($document));
         $this->assertSame(0, collect($component->instance()->categoryCards())->firstWhere('key', (string) $wi->id)['pending']);
     }
 

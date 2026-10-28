@@ -8,6 +8,7 @@ use App\Models\DocumentAcknowledge;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Filament\Actions\Testing\TestAction;
 
 class DocumentTaskTest extends TestCase
 {
@@ -29,8 +30,8 @@ class DocumentTaskTest extends TestCase
 
         Livewire::test(ListDocumentTasks::class)
             ->assertCanSeeTableRecords([$document])
-            ->assertTableActionVisible('viewPdf', $document)
-            ->assertTableActionVisible('acknowledge', $document);
+            ->assertActionVisible(TestAction::make('viewPdf')->table($document))
+            ->assertActionVisible(TestAction::make('acknowledge')->table($document));
     }
 
     public function test_document_name_links_to_the_pdf_like_the_read_button(): void
@@ -46,7 +47,7 @@ class DocumentTaskTest extends TestCase
                 fn ($column) => $column->getUrl() === DocumentTaskResource::pdfUrl($document) && $column->shouldOpenUrlInNewTab(),
                 $document,
             )
-            ->assertTableActionHasUrl('viewPdf', DocumentTaskResource::pdfUrl($document), $document);
+            ->assertActionHasUrl(TestAction::make('viewPdf')->table($document), DocumentTaskResource::pdfUrl($document));
     }
 
     public function test_user_can_acknowledge_a_document_once(): void
@@ -57,8 +58,8 @@ class DocumentTaskTest extends TestCase
         $this->actingAs($user);
 
         Livewire::test(ListDocumentTasks::class)
-            ->callTableAction('acknowledge', $document)
-            ->assertHasNoTableActionErrors()
+            ->callAction(TestAction::make('acknowledge')->table($document))
+            ->assertHasNoFormErrors()
             ->assertNotified('รับทราบเอกสารแล้ว');
 
         $this->assertDatabaseHas('document_acknowledges', [
@@ -70,8 +71,8 @@ class DocumentTaskTest extends TestCase
         $document->refresh();
 
         Livewire::test(ListDocumentTasks::class, ['activeTab' => 'all'])
-            ->assertTableActionHidden('acknowledge', $document)
-            ->assertTableActionVisible('viewPdf', $document);
+            ->assertActionHidden(TestAction::make('acknowledge')->table($document))
+            ->assertActionVisible(TestAction::make('viewPdf')->table($document));
 
         $this->assertSame(1, DocumentAcknowledge::where('user_id', $user->id)->count());
     }
@@ -97,8 +98,8 @@ class DocumentTaskTest extends TestCase
 
         Livewire::test(ListDocumentTasks::class, ['activeTab' => 'all'])
             ->assertCanSeeTableRecords([$mustAcknowledge, $otherSectionMustAcknowledge, $readOnly, $alreadyAcknowledged])
-            ->assertTableActionHidden('acknowledge', $otherSectionMustAcknowledge)
-            ->assertTableActionHidden('acknowledge', $readOnly);
+            ->assertActionHidden(TestAction::make('acknowledge')->table($otherSectionMustAcknowledge))
+            ->assertActionHidden(TestAction::make('acknowledge')->table($readOnly));
 
         $this->assertSame('1', DocumentTaskResource::getNavigationBadge());
     }

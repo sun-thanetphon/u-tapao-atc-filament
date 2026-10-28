@@ -52,7 +52,7 @@ class ListDocuments extends ListRecords
             // สร้าง/แก้ไขเอกสารเป็น modal บนหน้านี้ (ไม่มีหน้า create/edit แยก) จึงแจ้งอีเมลที่ hook นี้
             CreateAction::make()
                 ->after(function (Document $record, $livewire): void {
-                    app(DocumentNotifier::class)->notify($record, DocumentNotifier::wantedIn($livewire->getMountedActionForm()));
+                    app(DocumentNotifier::class)->notify($record, DocumentNotifier::wantedIn($livewire->getSchema($livewire->getMountedActionSchemaName())));
                 }),
         ];
     }

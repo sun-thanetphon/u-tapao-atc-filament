@@ -250,12 +250,12 @@ class DocumentResource extends Resource
                         ->url(fn(Document $record): string => route('filament.admin.resources.documents.follow', $record)),
                     EditAction::make()
                         ->before(function (Document $record, $livewire): void {
-                            $raw = $livewire->getMountedTableActionForm()?->getRawState() ?? [];
+                            $raw = $livewire->getSchema($livewire->getMountedActionSchemaName())?->getRawState() ?? [];
                             $record->keepRevision = ! ($raw['require_reacknowledge'] ?? true);
                             $record->revisionNote = trim((string) ($raw['revision_note'] ?? '')) ?: null;
                         })
                         ->after(function (Document $record, $livewire): void {
-                            app(DocumentNotifier::class)->notify($record, DocumentNotifier::wantedIn($livewire->getMountedTableActionForm()));
+                            app(DocumentNotifier::class)->notify($record, DocumentNotifier::wantedIn($livewire->getSchema($livewire->getMountedActionSchemaName())));
                         }),
                     DeleteAction::make(),
                 ])
