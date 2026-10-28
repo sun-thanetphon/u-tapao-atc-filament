@@ -4,7 +4,7 @@
 
 **Goal:** ย้ายแพ็กเกจหลักไปรุ่นล่าสุด (Laravel 13, Filament 5 + Livewire 4, maatwebsite/excel 4, spatie/laravel-permission 8, PHPUnit 12, tinker 3) ทีละขั้น โดยหน้าตาและพฤติกรรมของระบบเหมือนเดิม และ deploy บนโฮสต์ร่วมด้วย `git pull` + `composer install` ได้เหมือนเดิม
 
-**Architecture:** แบ่งเป็น 7 PR เล็ก PR ละขั้น เรียงจากความเสี่ยงต่ำไปสูง แต่ละ PR deploy และใช้งานจริงได้ก่อนขึ้น PR ถัดไป Filament ต้องผ่าน 4 ก่อนขึ้น 5 (upgrade script ของ v5 ถือว่าโค้ดเป็น v4 แล้ว) ส่วน Livewire 4 ต้องขึ้นพร้อม Filament 5 ธีมยังเป็น CSS ธรรมดาที่ inline ไว้ใน head เหมือนเดิม ไม่ต้องมีขั้น build
+**Architecture:** แบ่งเป็น 7 PR เล็ก PR ละขั้น เรียงจากความเสี่ยงต่ำไปสูง Task 1–4 deploy ทีละ PR ส่วนโค้ด Filament ต้องผ่าน 4 ก่อนขึ้น 5 (upgrade script ของ v5 ถือว่าโค้ดเป็น v4 แล้ว) จึงทำเป็นสอง PR ใน branch รวม แล้ว deploy ครั้งเดียวเป็น Filament 5 + Livewire 4 ธีมยังเป็น CSS ธรรมดาที่ inline ไว้ใน head เหมือนเดิม ไม่ต้องมีขั้น build
 
 **Tech Stack:** Laravel 12→13, Filament 3.3→4→5, Livewire 3→4, PHPUnit 11→12, PHP 8.3 (โฮสต์และ CI) รันเทสต์ใน Docker
 
@@ -72,7 +72,7 @@
 | อะไร | วันที่ |
 | --- | --- |
 | Laravel 12 หมด security fix | 24 ก.พ. 2027 → Task 1–2 ต้อง deploy ก่อนวันนี้ |
-| Filament 4 หมด bug fix | 15 ม.ค. 2027 → ไม่ควรค้างที่ 4 นาน |
+| Filament 4 หมด bug fix | 15 ม.ค. 2027 → ไม่ deploy Filament 4 แยก (ผู้ใช้ตัดสินใจ 2026-10-28) |
 | Filament 3 หมด security fix | 1 ม.ค. 2028 → Task 6 ต้อง deploy ก่อนวันนี้ |
 | Filament 4 หมด security fix | 15 ม.ค. 2028 |
 
@@ -84,8 +84,8 @@
 | 2 | Laravel 13 + tinker 3 + PHPUnit 12 | S–M (1–2 วัน) | ต่ำ–กลาง | หลัง 1 deploy |
 | 3 | spatie/laravel-permission 8 | S (≤ ครึ่งวัน) | ต่ำ | หลัง 2 (หรือก่อนก็ได้) |
 | 4 | maatwebsite/excel 4 + PhpSpreadsheet 5 | S (1 วัน) | กลาง | หลัง 2 (หรือก่อนก็ได้) |
-| 5 | Filament 4 (Livewire ยัง 3) | L (1–2 สัปดาห์) | สูง | หลัง 2 |
-| 6 | Filament 5 + Livewire 4 | M (2–4 วัน) | กลาง | หลัง 5 deploy และใช้จริงแล้วอย่างน้อย 1 สัปดาห์ |
+| 5 | Filament 4 (Livewire ยัง 3) เข้า branch รวม `upgrade/filament-5` ไม่ deploy | L (1–2 สัปดาห์) | สูง | หลัง 2 |
+| 6 | Filament 5 + Livewire 4 เข้า branch รวม แล้ว merge branch รวมเข้า `main` และ deploy ครั้งเดียว | M (2–4 วัน) | สูง (deploy 3 → 5 รวดเดียว) | หลัง 5 merge เข้า branch รวม |
 | 7 | เก็บงานหลังอัปเกรด: helper ทดสอบที่ deprecated, Placeholder | S–M | ต่ำ | หลัง 6 |
 
 Task 3 และ 4 ไม่ขึ้นกับ Filament จะทำสลับกับ 5 หรือทำคู่ขนานใน worktree อื่นก็ได้ แต่ห้าม deploy พร้อม Task 5 ในรอบเดียว เพื่อให้รู้ว่าอะไรพังถ้ามีปัญหา
@@ -212,6 +212,8 @@ Tinker 3: เลิกรองรับ PHP 8.0 และต่ำกว่า 
 
 ### Task 5: Filament 4 (Livewire ยังเป็น 3)
 
+**วิธีส่งงาน (ผู้ใช้ตัดสินใจ 2026-10-28):** ไม่ deploy Filament 4 ขึ้น production สร้าง branch รวม `upgrade/filament-5` จาก `main` แล้วเปิด PR ของ Task 5 และ Task 6 เข้า branch นั้นทีละ PR (ตรวจและเทสต์ทีละขั้นเหมือนเดิม) เมื่อ Task 6 merge แล้ว ค่อยเปิด PR `upgrade/filament-5` → `main` แล้ว deploy ครั้งเดียว ระหว่างนั้น `main` ยังเป็น Filament 3 และ deploy งานอื่นได้ ถ้า `main` มี commit ใหม่ให้ merge เข้า branch รวมก่อนเปิด PR สุดท้าย
+
 งานใหญ่ที่สุดและเสี่ยงที่สุด ใช้ upgrade script ของ Filament ทำงานซ้ำ ๆ แล้วแก้ที่เหลือเอง
 
 **Files (จาก grep ทั้ง repo):**
@@ -270,7 +272,7 @@ Tinker 3: เลิกรองรับ PHP 8.0 และต่ำกว่า 
 - [ ] **Step 8:** commit แยกเป็นชุด: `chore(deps): upgrade to Filament 4`, `fix: keep v3 table and form defaults on Filament 4`, `fix: move login log write protection to a policy`, `style: adapt panel theme to Filament 4`
 
 **เช็กในเบราว์เซอร์ (ทุกข้อ ทั้ง light/dark และมือถือ):** login/register/ขอรีเซ็ต/ตั้งรหัสใหม่ (ข้อความ error ไทย, rate limit 5 ครั้ง), Home, รายการเอกสารของฉัน (สีสถานะ, แท็บ, หมวด), เปิด PDF และรับทราบ, Document (สร้าง/แก้/อัปโหลดไฟล์/ประวัติไฟล์), Follow (stats, export Excel, print, Force), Users (อนุมัติ, นำเข้าอีเมล, reset password), Login Log, Public URL, Tutorial Video, Credential Expiry, เปลี่ยนรหัสผ่าน, เมนูข้างพับ/เปิด
-**Rollback:** มาตรฐาน (asset v3 กลับมาพร้อม `git checkout`) ถ้าผู้ใช้ค้างหน้าเก่าไว้ Livewire จะขอให้รีโหลดหน้า
+**Rollback:** ไม่มี เพราะไม่ deploy ขั้นนี้แยก ถ้า Task 6 ไปต่อไม่ได้ ให้ปิด PR หรือ revert ใน branch รวม `main` ไม่โดนอะไร
 
 ### Task 6: Filament 5 + Livewire 4
 
@@ -291,12 +293,12 @@ Tinker 3: เลิกรองรับ PHP 8.0 และต่ำกว่า 
 - [ ] **Step 1:** รัน upgrade script ของ v5 และ `composer update -W` ใน container
 - [ ] **Step 2:** แก้ `config/livewire.php` และ Blade ตามรายการข้างบน
 - [ ] **Step 3:** รันเทสต์ทั้งชุด คาดว่าผ่าน
-- [ ] **Step 4:** จับภาพทุกหน้าเทียบกับผลของ Task 5 (ไม่ควรต่าง)
+- [ ] **Step 4:** จับภาพทุกหน้าเทียบกับผลของ Task 5 (ไม่ควรต่าง) และเทียบกับภาพอ้างอิง Filament 3 จาก Task 5 Step 1 อีกครั้ง เพราะผู้ใช้จะเห็นการเปลี่ยน 3 → 5 ในรอบเดียว
 - [ ] **Step 5:** `composer remove filament/upgrade --dev`, commit asset และ `chore(deps): upgrade to Filament 5 and Livewire 4`
 
 **เช็กในเบราว์เซอร์:** รายการเดียวกับ Task 5 เน้นสิ่งที่ใช้ Livewire: ค้นหาเอกสารพิมพ์แล้วผลขึ้น, toggle, ฟอร์มที่ `live(onBlur: true)` (ช่องอีเมลใน `UserResource::emailField`), modal ของ action, polling (ถ้ามี), เปิดหน้าเดิมค้างไว้ข้ามการ deploy แล้วกดปุ่ม
 **หลัง deploy:** ดู error log ของโฮสต์ 1 วัน และถามผู้ใช้สองสามคนว่าใช้ได้ปกติ
-**Rollback:** มาตรฐาน (กลับไป commit ของ Task 5 ซึ่ง deploy ใช้จริงมาแล้ว)
+**Rollback:** มาตรฐาน กลับไป commit ของ `main` ก่อน merge branch รวม ซึ่งยังเป็น Filament 3 + Livewire 3 (`composer.lock` และ asset ใน `public/` กลับมาพร้อมกัน ไม่มี migration) ถ้าเจอปัญหาหลังใช้ไปหลายวัน ให้ย้อนก่อนแล้วแก้ใน branch รวม ไม่ต้องแก้สด ๆ บน production ถ้าผู้ใช้เปิดหน้าค้างไว้ข้ามการ deploy หรือ rollback Livewire จะขอให้รีโหลดหน้า
 
 ### Task 7: เก็บงานหลังอัปเกรด
 
@@ -334,7 +336,7 @@ Tinker 3: เลิกรองรับ PHP 8.0 และต่ำกว่า 
 
 ## คำถามที่ผู้ใช้ต้องตัดสินใจ
 
-1. **deploy Filament 4 ขึ้น production ก่อนไหม** หรือทำ Task 5 กับ 6 ต่อกันแล้ว deploy ทีเดียว ผมแนะนำให้ deploy Filament 4 ก่อน แล้วใช้จริงอย่างน้อย 1 สัปดาห์ เพื่อแยกปัญหาของ Filament ออกจาก Livewire 4 และมีจุด rollback ที่ใช้งานได้จริง (แต่ Filament 4 หมด bug fix 15 ม.ค. 2027 จึงไม่ควรค้างนาน)
+1. ~~deploy Filament 4 ก่อนไหม~~ **ตอบแล้ว (2026-10-28):** ไม่ deploy Filament 4 แยก ทำ Task 5 และ 6 ใน branch รวม `upgrade/filament-5` แล้ว deploy Filament 5 ครั้งเดียว ถ้าพังให้ย้อนกลับไป Filament 3
 2. ~~ภาพพื้นหลังหน้า login~~ **ตอบแล้ว (2026-10-28):** คงภาพรันเวย์เดิม (`bg2.jpg`) ไว้ Task 1 ส่งภาพผ่านตัวแปร CSS ของเราเองแทน plugin
 3. **ช่วงเวลา deploy** ของแต่ละขั้น (แนะนำนอกเวลาเข้าเวร) และใครเป็นคนเช็กหลังล็อกอินด้วยบัญชีจริง
 4. **ตัวเลือกแสดง "ทั้งหมด" (all) ในตาราง** Filament 4 เอาออกจากค่าเริ่มต้น มีใครใช้อยู่ไหม ถ้าใช้ ผมจะใส่กลับให้ตารางที่ต้องการ
