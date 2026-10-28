@@ -21,7 +21,7 @@
 }
 
 .dark .fi-body {
-    background-color: rgb(var(--gray-950));
+    background-color: var(--gray-950);
 }
 
 /* ---------- Sidebar: navy ตลอด ทั้งโหมดสว่างและมืด ---------- */
@@ -105,8 +105,8 @@
 }
 
 .fi-sidebar .fi-sidebar-group-label,
-.fi-sidebar .fi-sidebar-group-icon,
-.fi-sidebar .fi-sidebar-group-collapse-button {
+.fi-sidebar .fi-sidebar-group-btn > .fi-icon,
+.fi-sidebar .fi-sidebar-group-collapse-btn {
     color: rgb(255 255 255 / 0.5);
 }
 
@@ -115,7 +115,7 @@
     letter-spacing: 0.02em;
 }
 
-.fi-sidebar .fi-sidebar-item-button {
+.fi-sidebar .fi-sidebar-item-btn {
     position: relative;
 }
 
@@ -127,21 +127,21 @@
     color: rgb(255 255 255 / 0.5);
 }
 
-.fi-sidebar .fi-sidebar-item-button:hover,
-.fi-sidebar .fi-sidebar-item-button:focus-visible {
+.fi-sidebar .fi-sidebar-item-btn:hover,
+.fi-sidebar .fi-sidebar-item-btn:focus-visible {
     background-color: rgb(255 255 255 / 0.07);
 }
 
-.fi-sidebar .fi-sidebar-item-button:focus-visible {
+.fi-sidebar .fi-sidebar-item-btn:focus-visible {
     outline: 2px solid var(--uta-amber);
     outline-offset: -2px;
 }
 
-.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-button {
+.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
     background-color: rgb(255 255 255 / 0.1);
 }
 
-.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-button::before {
+.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn::before {
     content: "";
     position: absolute;
     inset: 0.5rem auto 0.5rem -0.5rem;
@@ -163,11 +163,59 @@
 
 .fi-topbar > nav {
     box-shadow: none;
-    --tw-ring-color: rgb(var(--gray-200));
+    --tw-ring-color: var(--gray-200);
 }
 
 .dark .fi-topbar > nav {
     --tw-ring-color: rgb(255 255 255 / 0.08);
+}
+
+/*
+ * จอใหญ่: Filament 4 ย้ายตราหน่วยและปุ่มพับเมนูจากหัวเมนูข้างขึ้นไปไว้ใน topbar
+ * ทำช่วงซ้ายของ topbar (กว้างเท่าเมนูข้าง) ให้เป็นหัวเมนูข้างสีกรมท่าแบบเดิม: ตราอยู่ซ้าย ปุ่มพับอยู่ขวา มีลาย checker ด้านล่าง
+ */
+@media (min-width: 1024px) {
+    .fi-body:has(.fi-sidebar.fi-sidebar-open) .fi-topbar {
+        position: relative;
+        background-image: linear-gradient(to right, var(--uta-navy) var(--sidebar-width), transparent var(--sidebar-width));
+    }
+
+    .dark .fi-body:has(.fi-sidebar.fi-sidebar-open) .fi-topbar {
+        background-image: linear-gradient(to right, var(--uta-navy-deep) var(--sidebar-width), transparent var(--sidebar-width));
+    }
+
+    .fi-body:has(.fi-sidebar.fi-sidebar-open) .fi-topbar::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: var(--sidebar-width);
+        height: 6px;
+        background: var(--uta-checker);
+        background-size: 6px 6px;
+    }
+
+    .fi-body:has(.fi-sidebar.fi-sidebar-open) .fi-topbar-start {
+        width: calc(var(--sidebar-width) - 1.5rem);
+    }
+
+    .fi-body:has(.fi-sidebar.fi-sidebar-open) .fi-topbar-collapse-sidebar-btn-ctn {
+        order: 2;
+        margin-inline-start: auto;
+    }
+
+    .fi-body:has(.fi-sidebar.fi-sidebar-open) .fi-topbar-collapse-sidebar-btn-ctn .fi-icon-btn {
+        color: rgb(255 255 255 / 0.7);
+    }
+
+    .fi-body:has(.fi-sidebar.fi-sidebar-open) .fi-topbar-collapse-sidebar-btn-ctn .fi-icon-btn:hover {
+        color: #fff;
+        background-color: rgb(255 255 255 / 0.08);
+    }
+
+    .fi-body:has(.fi-sidebar.fi-sidebar-open) .fi-topbar .fi-logo .uta-brand-title {
+        color: #fff;
+    }
 }
 
 .fi-header-heading {
@@ -187,7 +235,7 @@
 .fi-wi-stats-overview-stat,
 .fi-wi-chart > .fi-section {
     box-shadow: 0 1px 2px rgb(16 24 40 / 0.04);
-    --tw-ring-color: rgb(var(--gray-200));
+    --tw-ring-color: var(--gray-200);
 }
 
 .dark .fi-section,
@@ -197,7 +245,7 @@
 }
 
 .fi-ta-header-cell {
-    background-color: rgb(var(--gray-50));
+    background-color: var(--gray-50);
 }
 
 .dark .fi-ta-header-cell {
@@ -213,6 +261,11 @@
     color: #fff;
 }
 
+/* ชื่อ role ในตารางผู้ใช้ (Filament 4 ไม่มี utility class ของ Tailwind ให้แล้ว) */
+.uta-capitalize {
+    text-transform: capitalize;
+}
+
 /* ---------- หน้า login: ภาพสนามบิน + ฟอร์ม ---------- */
 
 .uta-login {
@@ -223,7 +276,7 @@
 }
 
 .dark .uta-login {
-    background-color: rgb(var(--gray-950));
+    background-color: var(--gray-950);
 }
 
 .uta-login-brand {
@@ -322,7 +375,7 @@
     background:
         radial-gradient(60rem 28rem at 100% 0%, rgb(46 134 193 / 0.22), transparent 60%),
         radial-gradient(40rem 24rem at 0% 100%, rgb(232 180 0 / 0.08), transparent 60%),
-        rgb(var(--gray-950));
+        var(--gray-950);
 }
 
 /* ปุ่มเข้าสู่ระบบเป็นสีทองเด่นเหมือนปุ่มบนหน้า Home */
@@ -373,7 +426,13 @@
 }
 
 .uta-admin-request-form {
+    display: grid;
+    gap: 1.5rem;
     margin-top: 1rem;
+}
+
+.uta-admin-request-submit {
+    width: 100%;
 }
 
 @media (min-width: 1024px) {
@@ -802,12 +861,12 @@
 .uta-card {
     border-radius: 0.75rem;
     background-color: #fff;
-    box-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 0 0 1px rgb(var(--gray-200));
+    box-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 0 0 1px var(--gray-200);
     overflow: hidden;
 }
 
 .dark .uta-card {
-    background-color: rgb(var(--gray-900));
+    background-color: var(--gray-900);
     box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08);
 }
 
@@ -866,15 +925,15 @@
     gap: 0.75rem;
     min-height: 2.75rem;
     padding: 0.5rem 0.5rem;
-    border-bottom: 1px solid rgb(var(--gray-100));
-    color: rgb(var(--gray-800));
+    border-bottom: 1px solid var(--gray-100);
+    color: var(--gray-800);
     font-size: 0.9375rem;
     line-height: 1.5;
 }
 
 .dark .uta-link {
     border-bottom-color: rgb(255 255 255 / 0.06);
-    color: rgb(var(--gray-200));
+    color: var(--gray-200);
 }
 
 .uta-links li:last-child .uta-link {
@@ -894,13 +953,13 @@
     width: 1rem;
     height: 1rem;
     flex-shrink: 0;
-    color: rgb(var(--gray-400));
+    color: var(--gray-400);
 }
 
 .uta-link:hover,
 .uta-link:focus-visible {
     border-radius: 0.5rem;
-    background-color: rgb(var(--primary-50));
+    background-color: var(--primary-50);
     color: var(--uta-navy);
 }
 
@@ -925,7 +984,7 @@
 
 .uta-empty {
     padding: 0.75rem 1.25rem 1.25rem;
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.875rem;
 }
 
@@ -952,13 +1011,13 @@
 .uta-service-about p {
     max-width: 42rem;
     margin-top: 1rem;
-    color: rgb(var(--gray-700));
+    color: var(--gray-700);
     font-size: 1rem;
     line-height: 1.85;
 }
 
 .dark .uta-service-about p {
-    color: rgb(var(--gray-300));
+    color: var(--gray-300);
 }
 
 .uta-service-title {
@@ -979,7 +1038,7 @@
 }
 
 .uta-service-subtitle {
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.8125rem;
     font-weight: 500;
 }
@@ -990,7 +1049,7 @@
 
 .uta-people li {
     padding: 0.375rem 0;
-    color: rgb(var(--gray-900));
+    color: var(--gray-900);
     font-weight: 500;
 }
 
@@ -1015,7 +1074,7 @@
 }
 
 .uta-overview-label {
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.875rem;
     font-weight: 500;
 }
@@ -1053,7 +1112,7 @@
 .uta-meter-cell {
     height: 0.875rem;
     border-radius: 2px;
-    background-color: rgb(var(--gray-200));
+    background-color: var(--gray-200);
 }
 
 .dark .uta-meter-cell {
@@ -1065,7 +1124,7 @@
 }
 
 .dark .uta-meter-cell.is-on {
-    background-color: rgb(var(--primary-400));
+    background-color: var(--primary-400);
 }
 
 /* ช่องสุดท้ายที่ติดเป็นสีทอง บอกตำแหน่งปัจจุบัน */
@@ -1075,16 +1134,16 @@
 
 .uta-overview-caption {
     margin-top: 0.75rem;
-    color: rgb(var(--gray-600));
+    color: var(--gray-600);
     font-size: 0.875rem;
 }
 
 .dark .uta-overview-caption {
-    color: rgb(var(--gray-400));
+    color: var(--gray-400);
 }
 
 .uta-overview-caption strong {
-    color: rgb(var(--gray-900));
+    color: var(--gray-900);
     font-weight: 600;
 }
 
@@ -1095,7 +1154,7 @@
 .uta-overview-figures {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    border-top: 1px solid rgb(var(--gray-200));
+    border-top: 1px solid var(--gray-200);
 }
 
 .dark .uta-overview-figures {
@@ -1107,7 +1166,7 @@
 }
 
 .uta-overview-figures > div + div {
-    border-left: 1px solid rgb(var(--gray-200));
+    border-left: 1px solid var(--gray-200);
 }
 
 .dark .uta-overview-figures > div + div {
@@ -1115,13 +1174,13 @@
 }
 
 .uta-overview-figures dt {
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.75rem;
 }
 
 .uta-overview-figures dd {
     margin-top: 0.25rem;
-    color: rgb(var(--gray-900));
+    color: var(--gray-900);
     font-size: 1.75rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -1156,7 +1215,7 @@
     }
 
     .uta-overview-figures > div:first-child {
-        border-left: 1px solid rgb(var(--gray-200));
+        border-left: 1px solid var(--gray-200);
     }
 
     .dark .uta-overview-figures > div:first-child {
@@ -1178,13 +1237,13 @@
 }
 
 .uta-board-all {
-    color: rgb(var(--primary-600));
+    color: var(--primary-600);
     font-size: 0.875rem;
     font-weight: 500;
 }
 
 .dark .uta-board-all {
-    color: rgb(var(--primary-400));
+    color: var(--primary-400);
 }
 
 .uta-board-all:hover {
@@ -1197,7 +1256,7 @@
     margin: 0 0.75rem 0.75rem;
     padding: 0.5rem;
     border-radius: 0.5rem;
-    background-color: rgb(var(--gray-100));
+    background-color: var(--gray-100);
 }
 
 .dark .uta-strips {
@@ -1222,7 +1281,7 @@
 }
 
 .dark .uta-strip {
-    background-color: rgb(var(--gray-900));
+    background-color: var(--gray-900);
 }
 
 /* แถบสีด้านซ้ายบอกสถานะ เหมือนสีของ strip holder */
@@ -1240,7 +1299,7 @@
 .uta-strip[data-status="high"] { --uta-strip-color: var(--uta-sky); }
 
 a.uta-strip:hover {
-    box-shadow: 0 0 0 1px rgb(var(--primary-300)), 0 4px 12px rgb(16 24 40 / 0.08);
+    box-shadow: 0 0 0 1px var(--primary-300), 0 4px 12px rgb(16 24 40 / 0.08);
 }
 
 /* แถบที่ไม่มีลิงก์ (ผู้ใช้ที่ไม่ใช่ super-admin) ดูได้อย่างเดียว */
@@ -1262,7 +1321,7 @@ a.uta-strip:hover {
 }
 
 .uta-strip-code {
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.8125rem;
     font-weight: 600;
     letter-spacing: 0.02em;
@@ -1276,9 +1335,9 @@ a.uta-strip:hover {
 
 .uta-strip-sections span {
     padding: 0 0.375rem;
-    border: 1px solid rgb(var(--gray-300));
+    border: 1px solid var(--gray-300);
     border-radius: 0.25rem;
-    color: rgb(var(--gray-600));
+    color: var(--gray-600);
     font-size: 0.6875rem;
     font-weight: 600;
     line-height: 1.25rem;
@@ -1286,13 +1345,13 @@ a.uta-strip:hover {
 
 .dark .uta-strip-sections span {
     border-color: rgb(255 255 255 / 0.15);
-    color: rgb(var(--gray-300));
+    color: var(--gray-300);
 }
 
 .uta-strip-name {
     grid-area: name;
     min-width: 0;
-    color: rgb(var(--gray-900));
+    color: var(--gray-900);
     font-size: 0.9375rem;
     font-weight: 500;
     line-height: 1.45;
@@ -1314,7 +1373,7 @@ a.uta-strip:hover {
     flex: 1;
     height: 6px;
     border-radius: 999px;
-    background-color: rgb(var(--gray-200));
+    background-color: var(--gray-200);
     overflow: hidden;
 }
 
@@ -1330,11 +1389,11 @@ a.uta-strip:hover {
 }
 
 .dark .uta-sections .uta-strip-bar > span {
-    background-color: rgb(var(--primary-400));
+    background-color: var(--primary-400);
 }
 
 .uta-strip-count {
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.8125rem;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
@@ -1342,7 +1401,7 @@ a.uta-strip:hover {
 
 .uta-strip-rate {
     grid-area: rate;
-    color: rgb(var(--gray-900));
+    color: var(--gray-900);
     font-size: 1.25rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
@@ -1364,7 +1423,7 @@ a.uta-strip:hover {
         align-items: flex-start;
         gap: 0.25rem;
         padding-right: 1rem;
-        border-right: 1px dashed rgb(var(--gray-300));
+        border-right: 1px dashed var(--gray-300);
     }
 
     .dark .uta-strip-id {
@@ -1378,7 +1437,7 @@ a.uta-strip:hover {
 
 .uta-board-more {
     padding: 0 1.25rem 1rem;
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.8125rem;
 }
 
@@ -1388,7 +1447,7 @@ a.uta-strip:hover {
     align-items: center;
     gap: 0.5rem;
     padding: 2.5rem 1.25rem 3rem;
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
 }
 
 .uta-board-empty-icon {
@@ -1442,7 +1501,7 @@ a.uta-strip:hover {
 
 .uta-section-name {
     overflow: hidden;
-    color: rgb(var(--gray-900));
+    color: var(--gray-900);
     font-size: 0.9375rem;
     font-weight: 500;
     text-overflow: ellipsis;
@@ -1454,7 +1513,7 @@ a.uta-strip:hover {
 }
 
 .uta-section-rate {
-    color: rgb(var(--gray-900));
+    color: var(--gray-900);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
@@ -1464,7 +1523,7 @@ a.uta-strip:hover {
 }
 
 .uta-section-count {
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.75rem;
 }
 
@@ -1478,7 +1537,7 @@ a.uta-strip:hover {
     align-items: center;
     gap: 0.75rem;
     padding: 0.625rem 0.5rem;
-    border-bottom: 1px solid rgb(var(--gray-100));
+    border-bottom: 1px solid var(--gray-100);
 }
 
 .dark .uta-latest-row {
@@ -1496,7 +1555,7 @@ a.uta-strip:hover {
     width: 2.25rem;
     height: 2.25rem;
     border-radius: 999px;
-    background-color: rgb(var(--primary-50));
+    background-color: var(--primary-50);
     color: var(--uta-navy);
     font-weight: 600;
 }
@@ -1514,7 +1573,7 @@ a.uta-strip:hover {
 
 .uta-latest-name {
     overflow: hidden;
-    color: rgb(var(--gray-900));
+    color: var(--gray-900);
     font-size: 0.875rem;
     font-weight: 500;
     text-overflow: ellipsis;
@@ -1527,7 +1586,7 @@ a.uta-strip:hover {
 
 .uta-latest-doc {
     overflow: hidden;
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.8125rem;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1535,7 +1594,7 @@ a.uta-strip:hover {
 
 .uta-latest-time {
     flex-shrink: 0;
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.75rem;
 }
 
@@ -1568,12 +1627,12 @@ a.uta-strip:hover {
     width: 5px;
 }
 
-.fi-ta-record.uta-task-pending .fi-ta-text-item-label {
-    color: rgb(var(--gray-950));
+.fi-ta-record.uta-task-pending .fi-ta-text-item {
+    color: var(--gray-950);
     font-weight: 600;
 }
 
-.dark .fi-ta-record.uta-task-pending .fi-ta-text-item-label {
+.dark .fi-ta-record.uta-task-pending .fi-ta-text-item {
     color: #fff;
 }
 
@@ -1589,17 +1648,17 @@ a.uta-strip:hover {
 }
 
 /* รับทราบแล้วยังต้องอ่านง่าย: ชื่อเป็นสีข้อความปกติ (ไม่จาง) ต่างจากรอรับทราบที่หนาและมีพื้นทอง */
-.fi-ta-record.uta-task-acknowledged .fi-ta-text-item-label {
-    color: rgb(var(--gray-950));
+.fi-ta-record.uta-task-acknowledged .fi-ta-text-item {
+    color: var(--gray-950);
 }
 
-.dark .fi-ta-record.uta-task-acknowledged .fi-ta-text-item-label {
-    color: rgb(var(--gray-100));
+.dark .fi-ta-record.uta-task-acknowledged .fi-ta-text-item {
+    color: var(--gray-100);
 }
 
 /* ชื่อเอกสารเป็นลิงก์เปิด PDF: ขีดเส้นใต้ตอน hover/focus ให้รู้ว่ากดได้ */
-.fi-ta-record.uta-task a:hover .fi-ta-text-item-label,
-.fi-ta-record.uta-task a:focus-visible .fi-ta-text-item-label {
+.fi-ta-record.uta-task a:hover .fi-ta-text-item,
+.fi-ta-record.uta-task a:focus-visible .fi-ta-text-item {
     text-decoration: underline;
     text-underline-offset: 3px;
 }
@@ -1607,7 +1666,7 @@ a.uta-strip:hover {
 .uta-task-category {
     margin-left: 0.625rem;
     padding-left: 0.625rem;
-    border-left: 1px solid rgb(var(--gray-300));
+    border-left: 1px solid var(--gray-300);
 }
 
 .dark .uta-task-category {
@@ -1671,7 +1730,7 @@ a.uta-strip:hover {
 
 .uta-mine-new {
     margin-top: 0.5rem;
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.8125rem;
 }
 
@@ -1686,7 +1745,7 @@ a.uta-strip:hover {
     gap: 0.75rem;
     padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
-    background-color: rgb(var(--gray-100));
+    background-color: var(--gray-100);
 }
 
 .dark .uta-mine-item {
@@ -1694,12 +1753,12 @@ a.uta-strip:hover {
 }
 
 .uta-mine-item:hover {
-    box-shadow: 0 0 0 1px rgb(var(--primary-300));
+    box-shadow: 0 0 0 1px var(--primary-300);
 }
 
 .uta-mine-code {
     flex: none;
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.75rem;
 }
 
@@ -1716,7 +1775,7 @@ a.uta-strip:hover {
     flex: none;
     width: 1.25rem;
     height: 1.25rem;
-    color: rgb(var(--gray-400));
+    color: var(--gray-400);
 }
 
 /* เลือกดูเอกสารตามประเภท (หน้าเอกสารของฉัน) */
@@ -1725,7 +1784,7 @@ a.uta-strip:hover {
     grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
     gap: 0.625rem;
     padding: 0.875rem 1rem;
-    border-bottom: 1px solid rgb(var(--gray-200));
+    border-bottom: 1px solid var(--gray-200);
 }
 
 .dark .uta-cats {
@@ -1756,7 +1815,7 @@ a.uta-strip:hover {
     padding: 0.625rem 0.75rem;
     border-radius: 0.625rem;
     text-align: left;
-    box-shadow: 0 0 0 1px rgb(var(--gray-200));
+    box-shadow: 0 0 0 1px var(--gray-200);
     cursor: pointer;
 }
 
@@ -1765,11 +1824,11 @@ a.uta-strip:hover {
 }
 
 .uta-cat-card:hover {
-    box-shadow: 0 0 0 1px rgb(var(--primary-300));
+    box-shadow: 0 0 0 1px var(--primary-300);
 }
 
 .uta-cat-card.is-active {
-    box-shadow: 0 0 0 2px rgb(var(--primary-500));
+    box-shadow: 0 0 0 2px var(--primary-500);
 }
 
 .uta-cat-name {
@@ -1779,7 +1838,7 @@ a.uta-strip:hover {
 }
 
 .uta-cat-meta {
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.75rem;
 }
 
@@ -1850,7 +1909,7 @@ a.uta-strip:hover {
     }
 
     /* แท็บรอรับทราบ/รับทราบแล้ว/ทั้งหมด ต้องพอดีจอ ไม่ให้ "ทั้งหมด" ถูกตัด */
-    .fi-tabs-item-icon {
+    .fi-tabs-item > .fi-icon {
         display: none;
     }
 }
@@ -1866,7 +1925,7 @@ a.uta-strip:hover {
 }
 
 .uta-study-desc {
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-size: 0.8125rem;
 }
 
@@ -1909,29 +1968,29 @@ a.uta-strip:hover {
 
 a.uta-study-subject:hover,
 a.uta-study-subject:focus-visible {
-    color: rgb(var(--primary-600));
+    color: var(--primary-600);
     text-decoration: underline;
     text-underline-offset: 3px;
 }
 
 .dark a.uta-study-subject:hover,
 .dark a.uta-study-subject:focus-visible {
-    color: rgb(var(--primary-400));
+    color: var(--primary-400);
 }
 
 .uta-study-more {
     flex: none;
-    color: rgb(var(--primary-600));
+    color: var(--primary-600);
     font-size: 0.75rem;
 }
 
 .dark .uta-study-more {
-    color: rgb(var(--primary-400));
+    color: var(--primary-400);
 }
 
 .uta-study-subject.is-missing,
 .uta-study-more.is-missing {
-    color: rgb(var(--gray-500));
+    color: var(--gray-500);
     font-weight: 400;
 }
 
