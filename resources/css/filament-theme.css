@@ -234,7 +234,7 @@
     min-height: 15rem;
     background-image:
         linear-gradient(180deg, rgb(19 41 75 / 0.12) 0%, rgb(19 41 75 / 0.35) 45%, rgb(14 31 58 / 0.88) 100%),
-        var(--filament-backgrounds-image, none);
+        var(--uta-login-photo, none);
     background-color: var(--uta-navy);
     background-position: center;
     background-size: cover;

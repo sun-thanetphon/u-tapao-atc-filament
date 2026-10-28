@@ -34,6 +34,13 @@ class PagesTest extends TestCase
             ->assertSee('ระบบจัดเก็บและติดตามการรับทราบเอกสาร');
     }
 
+    public function test_login_page_shows_the_runway_photo(): void
+    {
+        $this->get('/admin/login')
+            ->assertOk()
+            ->assertSee('--uta-login-photo:url("' . asset('images/backgrounds/bg2.jpg') . '")', false);
+    }
+
     public function test_regular_user_can_open_their_pages(): void
     {
         $user = $this->makeUser($this->section('ADC'));
