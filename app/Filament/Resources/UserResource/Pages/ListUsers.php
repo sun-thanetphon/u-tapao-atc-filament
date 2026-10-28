@@ -9,7 +9,7 @@ use Filament\Schemas\Components\Wizard\Step;
 use Filament\Forms\Components\FileUpload;
 use Closure;
 use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Components\Placeholder;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Utilities\Get;
 use App\Enums\PermissionEnum;
 use App\Enums\UserStatus;
@@ -100,9 +100,9 @@ class ListUsers extends ListRecords
                 Step::make('ตรวจสอบก่อนนำเข้า')
                     ->description('ตรวจสอบสรุปด้านล่าง ยังไม่มีการบันทึกจนกว่าจะกดยืนยัน')
                     ->schema([
-                        Placeholder::make('preview')
+                        TextEntry::make('preview')
                             ->hiddenLabel()
-                            ->content(fn(Get $get) => UserResource::emailImportPreview($get('file'), (bool) $get('overwrite'))),
+                            ->state(fn(Get $get) => UserResource::emailImportPreview($get('file'), (bool) $get('overwrite'))),
                     ]),
             ])
             ->action(function (array $data) {

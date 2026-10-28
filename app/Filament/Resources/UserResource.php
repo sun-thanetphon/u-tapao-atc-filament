@@ -12,7 +12,6 @@ use Illuminate\Contracts\View\View;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\TagsColumn;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Actions\ViewAction;
@@ -404,7 +403,8 @@ class UserResource extends Resource
                 TextColumn::make('username')
                     ->searchable(),
                 // อยู่ถัดจาก username เพื่อให้เห็นตำแหน่งโดยไม่ต้องเลื่อนตารางไปทางขวา
-                TagsColumn::make('roles.name')
+                TextColumn::make('roles.name')
+                    ->badge()
                     ->sortable()
                     ->extraAttributes([
                         'class' => 'uta-capitalize'
@@ -507,7 +507,7 @@ class UserResource extends Resource
                         ->color('success')
                         ->visible(fn() => static::canApprove())
                         ->modalHeading('อนุมัติบัญชีที่เลือก')
-                        ->form([static::roleField()])
+                        ->schema([static::roleField()])
                         ->action(fn(Collection $records, array $data) => static::approveRecords($records, $data['role']))
                         ->deselectRecordsAfterCompletion(),
                     DeleteBulkAction::make(),

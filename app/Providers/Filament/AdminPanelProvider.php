@@ -22,7 +22,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Filament\Navigation\MenuItem;
+use Filament\Actions\Action;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Support\HtmlString;
 
@@ -98,7 +98,7 @@ class AdminPanelProvider extends PanelProvider
                     HTML),
             )
             ->userMenuItems([
-                'profile' => MenuItem::make()->label('Change password')
+                'profile' => fn (Action $action): Action => $action->label('Change password')
                     ->icon('heroicon-o-key'),
             ])
             // local รันบน http จึงใช้ https ไม่ได้
