@@ -385,7 +385,7 @@ class EmailImportTest extends TestCase
 
         Livewire::actingAs($actor)->test(ListUsers::class)
             ->callAction('importEmails', $this->importData($file))
-            ->assertHasNoActionErrors();
+            ->assertHasNoFormErrors();
 
         $this->assertSame('person1@example.test', $a->fresh()->email);
         $this->assertSame('has@example.test', $b->fresh()->email);
@@ -411,13 +411,13 @@ class EmailImportTest extends TestCase
 
         $component = Livewire::actingAs($actor)->test(ListUsers::class)
             ->mountAction('importEmails')
-            ->setActionData($this->importData($file))
-            ->assertHasNoActionErrors()
+            ->fillForm($this->importData($file))
+            ->assertHasNoFormErrors()
             ->assertMountedActionModalSee('ไม่พบ username นี้');
 
         $this->assertNull($a->fresh()->email, 'ดูตัวอย่างต้องไม่เขียนฐานข้อมูล');
 
-        $component->callMountedAction()->assertHasNoActionErrors();
+        $component->callMountedAction()->assertHasNoFormErrors();
         $this->assertSame('person1@example.test', $a->fresh()->email);
     }
 
@@ -429,7 +429,7 @@ class EmailImportTest extends TestCase
 
         Livewire::actingAs($actor)->test(ListUsers::class)
             ->callAction('importEmails', $this->importData($file))
-            ->assertHasActionErrors(['file']);
+            ->assertHasFormErrors(['file']);
 
         $this->assertNull($a->fresh()->email);
     }

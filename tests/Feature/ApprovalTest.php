@@ -15,6 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Filament\Actions\Testing\TestAction;
 
 class ApprovalTest extends TestCase
 {
@@ -60,8 +61,8 @@ class ApprovalTest extends TestCase
 
             Livewire::test(ListUsers::class)
                 ->set('activeTab', 'pending')
-                ->callTableAction('approve', $pending, ['role' => $chosen])
-                ->assertHasNoTableActionErrors();
+                ->callAction(TestAction::make('approve')->table($pending), ['role' => $chosen])
+                ->assertHasNoFormErrors();
 
             $pending->refresh();
             $this->assertSame(UserStatus::ACTIVE, $pending->status);
@@ -80,8 +81,8 @@ class ApprovalTest extends TestCase
 
         Livewire::test(ListUsers::class)
             ->set('activeTab', 'pending')
-            ->callTableAction('approve', $legacy, ['role' => RoleEnum::USER])
-            ->assertHasNoTableActionErrors();
+            ->callAction(TestAction::make('approve')->table($legacy), ['role' => RoleEnum::USER])
+            ->assertHasNoFormErrors();
 
         $this->assertSame(UserStatus::ACTIVE, $legacy->fresh()->status);
         $this->assertTrue($legacy->fresh()->hasRole(RoleEnum::USER));
@@ -96,7 +97,7 @@ class ApprovalTest extends TestCase
 
         Livewire::test(ListUsers::class)
             ->set('activeTab', 'pending')
-            ->callTableAction('approve', $pending, ['role' => RoleEnum::USER]);
+            ->callAction(TestAction::make('approve')->table($pending), ['role' => RoleEnum::USER]);
 
         $this->assertSame(UserStatus::ACTIVE, $pending->fresh()->status);
         $this->assertTrue($this->notificationTitles()->contains('ส่งอีเมลไม่สำเร็จ'));
@@ -118,8 +119,8 @@ class ApprovalTest extends TestCase
 
         Livewire::test(ListUsers::class)
             ->set('activeTab', 'pending')
-            ->assertTableActionHidden('approve', $pending)
-            ->assertTableActionHidden('reject', $pending);
+            ->assertActionHidden(TestAction::make('approve')->table($pending))
+            ->assertActionHidden(TestAction::make('reject')->table($pending));
 
         $pending->refresh();
         $this->assertSame(UserStatus::PENDING, $pending->status);
@@ -134,8 +135,8 @@ class ApprovalTest extends TestCase
 
         Livewire::test(ListUsers::class)
             ->set('activeTab', 'pending')
-            ->callTableAction('approve', $pending, ['role' => RoleEnum::SUPERADMIN])
-            ->assertHasTableActionErrors(['role']);
+            ->callAction(TestAction::make('approve')->table($pending), ['role' => RoleEnum::SUPERADMIN])
+            ->assertHasFormErrors(['role']);
 
         $pending->refresh();
         $this->assertSame(UserStatus::PENDING, $pending->status);
@@ -171,8 +172,8 @@ class ApprovalTest extends TestCase
 
         $component = Livewire::test(ListUsers::class)
             ->set('activeTab', 'pending')
-            ->mountTableAction('approve', $pending)
-            ->setTableActionData(['role' => RoleEnum::ADMIN]);
+            ->mountAction(TestAction::make('approve')->table($pending))
+            ->fillForm(['role' => RoleEnum::ADMIN]);
 
         // สิทธิ์ถูกถอนหลังเปิดโมดัลแล้ว
         $admin->syncRoles([RoleEnum::USER]);
@@ -180,7 +181,7 @@ class ApprovalTest extends TestCase
         app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
 
         try {
-            $component->callMountedTableAction();
+            $component->callMountedAction();
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException) {
         }
 
@@ -207,7 +208,7 @@ class ApprovalTest extends TestCase
 
         Livewire::test(ListUsers::class)
             ->set('activeTab', 'pending')
-            ->callTableAction('reject', $pending, ['reason' => 'ไม่ใช่บุคลากร']);
+            ->callAction(TestAction::make('reject')->table($pending), ['reason' => 'ไม่ใช่บุคลากร']);
 
         $pending->refresh();
         $this->assertSame(UserStatus::REJECTED, $pending->status);
@@ -239,7 +240,7 @@ class ApprovalTest extends TestCase
 
         Livewire::test(ListUsers::class)
             ->set('activeTab', 'rejected')
-            ->callTableAction('reopen', $rejected);
+            ->callAction(TestAction::make('reopen')->table($rejected));
 
         $this->assertSame(UserStatus::PENDING, $rejected->fresh()->status);
     }
@@ -253,7 +254,7 @@ class ApprovalTest extends TestCase
 
         Livewire::test(ListUsers::class)
             ->set('activeTab', 'pending')
-            ->callTableBulkAction('approveSelected', [$a, $b, $active], ['role' => RoleEnum::ADMIN]);
+            ->selectTableRecords([$a, $b, $active])->callAction(TestAction::make('approveSelected')->table()->bulk(), ['role' => RoleEnum::ADMIN]);
 
         foreach ([$a, $b] as $u) {
             $u->refresh();
@@ -271,8 +272,8 @@ class ApprovalTest extends TestCase
 
         Livewire::test(ListUsers::class)
             ->set('activeTab', 'pending')
-            ->callTableBulkAction('approveSelected', [$a], ['role' => RoleEnum::SUPERADMIN])
-            ->assertHasTableBulkActionErrors(['role']);
+            ->selectTableRecords([$a])->callAction(TestAction::make('approveSelected')->table()->bulk(), ['role' => RoleEnum::SUPERADMIN])
+            ->assertHasFormErrors(['role']);
 
         $this->assertSame(UserStatus::PENDING, $a->fresh()->status);
         $this->assertCount(0, $a->fresh()->roles);

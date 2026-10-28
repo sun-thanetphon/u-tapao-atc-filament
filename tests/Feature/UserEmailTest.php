@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Filament\Actions\Testing\TestAction;
 
 class UserEmailTest extends TestCase
 {
@@ -35,7 +36,7 @@ class UserEmailTest extends TestCase
     {
         return Livewire::actingAs($admin)
             ->test(ListUsers::class)
-            ->callTableAction('edit', $target, $data);
+            ->callAction(TestAction::make('edit')->table($target), $data);
     }
 
     public function test_user_adds_own_email_on_profile(): void
@@ -143,7 +144,7 @@ class UserEmailTest extends TestCase
         $legacy = $this->makeUser($this->section('ADC'));
 
         $this->editUser($admin, $legacy, ['email' => 'legacy@example.com'])
-            ->assertHasNoTableActionErrors();
+            ->assertHasNoFormErrors();
 
         $this->assertSame('legacy@example.com', $legacy->fresh()->email);
     }
@@ -155,7 +156,7 @@ class UserEmailTest extends TestCase
         $target = $this->makeUser($this->section('ADC'));
 
         $this->editUser($admin, $target, ['email' => 'taken@example.com'])
-            ->assertHasTableActionErrors(['email']);
+            ->assertHasFormErrors(['email']);
 
         $this->assertNull($target->fresh()->email);
     }
@@ -167,7 +168,7 @@ class UserEmailTest extends TestCase
         $target = $this->makeUser($this->section('ADC'));
 
         $this->editUser($admin, $target, ['email' => 'old@example.com'])
-            ->assertHasNoTableActionErrors();
+            ->assertHasNoFormErrors();
 
         $this->assertSame('old@example.com', $target->fresh()->email);
     }
@@ -178,7 +179,7 @@ class UserEmailTest extends TestCase
         $target = $this->makeUser($this->section('ADC'));
 
         $this->editUser($admin, $target, ['email' => 'bad@@'])
-            ->assertHasTableActionErrors(['email']);
+            ->assertHasFormErrors(['email']);
 
         $this->assertNull($target->fresh()->email);
     }
@@ -190,7 +191,7 @@ class UserEmailTest extends TestCase
         $this->makeUser($this->section('ADC')); // another empty-email user
 
         $this->editUser($admin, $target, ['email' => ''])
-            ->assertHasNoTableActionErrors();
+            ->assertHasNoFormErrors();
 
         $this->assertNull($target->fresh()->email);
     }

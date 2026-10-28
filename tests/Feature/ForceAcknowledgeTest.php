@@ -11,6 +11,7 @@ use App\Support\AcknowledgeStats;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Filament\Actions\Testing\TestAction;
 
 /**
  * Super admin กด Force รับทราบแทนเจ้าหน้าที่ได้จากหน้าติดตามเอกสาร
@@ -36,8 +37,8 @@ class ForceAcknowledgeTest extends TestCase
 
         Livewire::test(FollowDocument::class, ['record' => $document->id])
             ->assertCanSeeTableRecords([$member])
-            ->assertTableActionVisible('supervisorAck', $member)
-            ->callTableAction('supervisorAck', $member)
+            ->assertActionVisible(TestAction::make('supervisorAck')->table($member))
+            ->callAction(TestAction::make('supervisorAck')->table($member))
             ->assertNotified('Force acknowledge successfully');
 
         $this->assertDatabaseHas('document_acknowledges', [
@@ -47,7 +48,7 @@ class ForceAcknowledgeTest extends TestCase
 
         // กดแล้วปุ่ม Force ของคนนั้นต้องหายไป
         Livewire::test(FollowDocument::class, ['record' => $document->id])
-            ->assertTableActionHidden('supervisorAck', $member->fresh());
+            ->assertActionHidden(TestAction::make('supervisorAck')->table($member->fresh()));
     }
 
     public function test_forced_acknowledgement_shows_up_for_the_user_and_on_the_dashboard(): void
@@ -59,7 +60,7 @@ class ForceAcknowledgeTest extends TestCase
 
         $this->actingAs($superAdmin);
         Livewire::test(FollowDocument::class, ['record' => $document->id])
-            ->callTableAction('supervisorAck', $member);
+            ->callAction(TestAction::make('supervisorAck')->table($member));
 
         // ฝั่งเจ้าหน้าที่: เอกสารย้ายจาก "รอรับทราบ" ไป "รับทราบแล้ว" และไม่มีปุ่มรับทราบ
         $this->actingAs($member);
@@ -69,8 +70,8 @@ class ForceAcknowledgeTest extends TestCase
 
         Livewire::test(ListDocumentTasks::class, ['activeTab' => 'acknowledged'])
             ->assertCanSeeTableRecords([$document])
-            ->assertTableActionHidden('acknowledge', $document)
-            ->assertTableActionVisible('viewPdf', $document);
+            ->assertActionHidden(TestAction::make('acknowledge')->table($document))
+            ->assertActionVisible(TestAction::make('viewPdf')->table($document));
 
         $this->assertNull(DocumentTaskResource::getNavigationBadge());
 
@@ -127,10 +128,10 @@ class ForceAcknowledgeTest extends TestCase
 
         // เจ้าหน้าที่รับทราบเองผ่านหน้า "เอกสารของฉัน"
         $this->actingAs($member);
-        Livewire::test(ListDocumentTasks::class)->callTableAction('acknowledge', $document);
+        Livewire::test(ListDocumentTasks::class)->callAction(TestAction::make('acknowledge')->table($document));
 
         $this->actingAs($superAdmin);
         Livewire::test(FollowDocument::class, ['record' => $document->id])
-            ->assertTableActionHidden('supervisorAck', $member->fresh());
+            ->assertActionHidden(TestAction::make('supervisorAck')->table($member->fresh()));
     }
 }
